@@ -32,7 +32,9 @@ export function LiveMonitoring() {
   const [assetId, setAssetId] = useState(
     [...assets].sort((a, b) => b.cycle - a.cycle)[0]?.id ?? '',
   )
-  const replay = useReplay(assetId, data)
+  // `?cycle=` opens the stream at a recorded cycle (useful for deep links).
+  const startCycle = Number(new URLSearchParams(window.location.search).get('cycle') ?? 0) || 0
+  const replay = useReplay(assetId, data, startCycle)
   const { meta, frames, latest, playing, speed, mode, status, notice } = replay
   const asset = assets.find((entry) => entry.id === assetId)
 
@@ -209,14 +211,22 @@ export function LiveMonitoring() {
           hint={
             latest?.rul.lower != null && latest?.rul.upper != null
               ? `80% band ${number(latest.rul.lower, 0)}–${number(latest.rul.upper, 0)}`
-              : 'Band unavailable in local replay'
+              : mode === 'local'
+                ? 'Band unavailable in local replay'
+                : 'No band at this cycle'
           } />
         <Stat label="Health score" value={latest?.health != null ? number(latest.health, 0) : '—'}
           unit="/ 100" tone={latest?.health != null && latest.health < 60 ? 'warn' : 'default'}
           hint={latest ? healthCategory(latest.health) : '—'} />
         <Stat label="Anomaly score" value={latest?.anomaly.score != null ? number(latest.anomaly.score, 2) : '—'}
           tone={latest?.anomaly.severity === 'high' || latest?.anomaly.severity === 'critical' ? 'bad' : 'default'}
-          hint={latest?.anomaly.severity ? `${latest.anomaly.severity} severity` : 'Severity unavailable locally'} />
+          hint={
+            latest?.anomaly.severity
+              ? `${latest.anomaly.severity} severity`
+              : mode === 'local'
+                ? 'Severity unavailable locally'
+                : 'No severity at this cycle'
+          } />
         <Stat label="Risk ≤ 30 cycles" value={latest?.risk_30 != null ? percent(latest.risk_30) : '—'}
           hint="Empirical residual CDF at this cycle" />
       </div>

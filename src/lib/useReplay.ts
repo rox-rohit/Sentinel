@@ -84,12 +84,20 @@ export interface ReplayController {
  * exported per-asset snapshot series (clearly labelled) when the API or the
  * replay artifact is unavailable.
  */
-export function useReplay(assetId: string, snapshot: Snapshot): ReplayController {
+export function useReplay(
+  assetId: string,
+  snapshot: Snapshot,
+  startCycle = 0,
+): ReplayController {
   const asset = useMemo(
     () => snapshot.assets.find((entry) => entry.id === assetId) ?? snapshot.assets[0],
     [assetId, snapshot.assets],
   )
   const local = useMemo(() => (asset ? localFrames(asset) : []), [asset])
+  const startIndex = useMemo(() => {
+    const index = local.findIndex((frame) => frame.cycle >= startCycle)
+    return index < 0 ? 0 : index
+  }, [local, startCycle])
 
   const [mode, setMode] = useState<ReplayMode>('live')
   const [status, setStatus] = useState<ReplayStatus>('connecting')
@@ -123,7 +131,7 @@ export function useReplay(assetId: string, snapshot: Snapshot): ReplayController
     setMeta(null)
     setPlaying(true)
     setSpeedState(1)
-    setCursor(0)
+    setCursor(startIndex)
 
     const localMeta: ReplayMeta = {
       asset_id: asset.id,
@@ -149,12 +157,12 @@ export function useReplay(assetId: string, snapshot: Snapshot): ReplayController
           : `${reason} This view has no per-asset series in the snapshot; start the API for streaming replay.`,
       )
       setMeta(localMeta)
-      setFrames(local.slice(0, 1))
-      setCursor(0)
+      setFrames(local.slice(startIndex, startIndex + 1))
+      setCursor(startIndex)
       setPlaying(true)
     }
 
-    const url = `${API_BASE.replace(/^http/, 'ws')}/ws/replay/${encodeURIComponent(asset.id)}`
+    const url = `${API_BASE.replace(/^http/, 'ws')}/ws/replay/${encodeURIComponent(asset.id)}?start_cycle=${startCycle}`
     let socket: WebSocket | null = null
     let timeout = 0
 
@@ -261,7 +269,7 @@ export function useReplay(assetId: string, snapshot: Snapshot): ReplayController
       }
       socketRef.current = null
     }
-  }, [asset, local])
+  }, [asset, local, startCycle, startIndex])
 
   // -- local player ------------------------------------------------------
   useEffect(() => {
