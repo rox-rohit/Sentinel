@@ -24,6 +24,50 @@ service and a React operations console — on two public research datasets.
 | What next? | Maintenance optimiser | Priority ranking + knapsack under budget, scenario costing |
 | Is it streaming? | Live monitoring | Recorded C-MAPSS replay over WebSocket, labelled simulated |
 
+## Screenshots
+
+Captured from the running console against the live FastAPI service (1440 × 900).
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/fleet-overview.png" alt="Fleet health overview with KPIs, health matrix and distribution" />
+      <br /><sub><b>Fleet overview</b> — 100 held-out engines, health distribution, 30-cycle failure risk.</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/live-monitoring.png" alt="Live monitoring with replay controls, cycle readouts and trend charts" />
+      <br /><sub><b>Live monitoring</b> — recorded trajectory replayed over WebSocket at 4× with live RUL, health and anomaly estimates.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/predictive-analytics.png" alt="Predictive analytics with horizon curve and risk distribution" />
+      <br /><sub><b>Predictive analytics</b> — assets above the 50% failure-risk threshold per horizon.</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/rul-intelligence.png" alt="RUL intelligence with predicted vs actual scatter and model comparison" />
+      <br /><sub><b>RUL intelligence</b> — predicted versus actual cycles, NASA score and residual band.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/maintenance-optimiser.png" alt="Maintenance optimiser with scenario comparison and recommended plan" />
+      <br /><sub><b>Maintenance optimiser</b> — knapsack plan under budget with reactive, preventive and predictive costing.</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/explainability.png" alt="Explainable AI with global importance and local attributions" />
+      <br /><sub><b>Explainable AI</b> — permutation importance, local attributions and calibration.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/model-laboratory.png" alt="Model laboratory with registry and evaluation metrics" />
+      <br /><sub><b>Model laboratory</b> — registry versions, metrics and dataset drift.</sub>
+    </td>
+    <td width="50%"></td>
+  </tr>
+</table>
+
 ## Verified results (this repository's build)
 
 RUL regression on **NASA C-MAPSS FD001**, 80/20 engine-wise split, model refit on
