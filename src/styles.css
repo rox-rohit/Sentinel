@@ -1,0 +1,132 @@
+@import 'tailwindcss';
+
+/*
+  SENTINEL design system.
+  Near-black command-centre surfaces, restrained cyan accents, amber/red only for
+  risk. Typography: Google Sans for interface, IBM Plex Mono for telemetry numbers.
+*/
+@theme {
+  --font-sans: 'Google Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --color-bg: #07090c;
+  --color-bg-deep: #05070a;
+  --color-surface: #0b0f14;
+  --color-surface-2: #10161d;
+  --color-raised: #141c25;
+  --color-line: rgb(148 178 205 / 0.10);
+  --color-line-strong: rgb(148 178 205 / 0.18);
+  --color-fg: #e8f0f7;
+  --color-muted: #8b9bab;
+  --color-faint: #5d6b7a;
+  --color-accent: #35d6f2;
+  --color-accent-2: #3b82f6;
+  --color-accent-3: #7dd3fc;
+  --color-good: #2dd4a7;
+  --color-warn: #f5a524;
+  --color-bad: #f4495d;
+  --color-critical: #ff4d6d;
+
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 14px;
+
+  --animate-pulse-soft: pulse-soft 2.6s ease-in-out infinite;
+  --animate-scan: scan 7s linear infinite;
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 0.35; }
+  }
+  @keyframes scan {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(100%); }
+  }
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-line);
+  }
+  html {
+    background: var(--color-bg);
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  button, input, select, textarea {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+  }
+  ::selection {
+    background: rgb(53 214 242 / 0.28);
+    color: #fff;
+  }
+  :focus-visible {
+    outline: 2px solid rgb(53 214 242 / 0.7);
+    outline-offset: 2px;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(148 178 205 / 0.16);
+    border-radius: 999px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility panel {
+  background: linear-gradient(180deg, rgb(20 28 37 / 0.72) 0%, rgb(11 15 20 / 0.86) 100%);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+}
+
+@utility panel-flat {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+}
+
+@utility raised {
+  background: var(--color-raised);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+}
+
+@utility numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+@utility grid-backdrop {
+  background-image:
+    linear-gradient(to right, rgb(148 178 205 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(148 178 205 / 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
