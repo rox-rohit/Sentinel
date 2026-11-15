@@ -1,0 +1,13 @@
+{
+  "entrypoint": "index.js",
+  "compatibilityDate": "2026-09-29",
+  "modules": [
+    {
+      "name": "index.js",
+      "type": "esm",
+      "path": "./dist/sentinel/index.js"
+    }
+  ],
+  "assetsDirectory": "./dist/client",
+  "spa": true
+}
