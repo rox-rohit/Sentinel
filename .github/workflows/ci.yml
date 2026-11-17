@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Tests, typecheck and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Cache source datasets
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: raw-data-${{ hashFiles('scripts/fetch_data.py') }}
+
+      - name: Fetch datasets
+        run: python scripts/fetch_data.py
+
+      - name: Build artifacts and platform snapshot
+        run: python -m sentinel.pipelines.build
+
+      - name: Backend tests
+        run: python -m pytest -q
+
+      - name: Worker tests
+        run: bun test tests
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Production build
+        run: bun run build
