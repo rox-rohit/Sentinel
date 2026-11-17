@@ -29,6 +29,13 @@ class FailureInput(BaseModel):
     }
 
 
+class AlertActionRequest(BaseModel):
+    """Actor and optional note recorded on an alert lifecycle transition."""
+
+    actor: str = Field(..., min_length=1, max_length=80, description="Who performed the action")
+    note: str | None = Field(None, max_length=500, description="Optional audit note")
+
+
 class RULRequest(BaseModel):
     readings: list[dict[str, float]] = Field(
         ...,

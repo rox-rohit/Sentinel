@@ -16,7 +16,6 @@ from datetime import datetime, timezone
 
 import pandas as pd
 from sqlalchemy import select
-from sqlalchemy import delete
 
 from sentinel import BUILD_NAME, __version__
 from sentinel.config import GENERATED, settings
@@ -38,8 +37,8 @@ from sentinel.models.store import read_meta
 from sentinel.pipelines.assemble import assemble_assets, build_alerts
 from sentinel.pipelines.snapshot import compose_snapshot, sanitize
 from sentinel.features.pipeline import SENSOR_LABELS_AI4I, build_tabular_features
-from sentinel.store.db import (AlertRecord, DatasetRecord, ModelRecord, init_db,
-                               list_datasets, list_models, session_scope)
+from sentinel.store.db import (DatasetRecord, ModelRecord, init_db, list_datasets,
+                               list_models, session_scope, sync_alerts)
 
 log = get_logger("pipelines.build")
 SNAPSHOT = settings.artifacts_dir / "snapshot.json"
@@ -325,13 +324,8 @@ def build() -> dict:
     )
     replay_summary = _export_replay(fleet_frame)
     alerts = build_alerts(assets)
-    with session_scope() as session:
-        session.execute(delete(AlertRecord))
-        for alert in alerts:
-            session.add(AlertRecord(
-                asset_id=alert["asset_id"], severity=alert["severity"], kind=alert["kind"],
-                message=alert["message"], cycle=int(alert["cycle"]), score=float(alert["score"]),
-            ))
+    alert_sync = sync_alerts(alerts)
+    log.info("alerts synced: %s", alert_sync)
 
     log.info("training failure classifier on AI4I")
     classifier_result = train_failure_classifier(ai4i_frame)

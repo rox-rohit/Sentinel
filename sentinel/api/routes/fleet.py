@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from sentinel.api.deps import service_dependency
 from sentinel.inference.service import SentinelService
-from sentinel.store.db import list_alerts
 
 router = APIRouter(tags=["fleet"])
 
@@ -57,8 +56,3 @@ def fleet_asset(asset_id: str, service: SentinelService = Depends(service_depend
     if asset is None:
         raise HTTPException(status_code=404, detail=f"Unknown asset {asset_id}")
     return asset
-
-
-@router.get("/alerts", summary="Generated operational alerts")
-def alerts(limit: int = Query(50, ge=1, le=200)) -> dict:
-    return {"alerts": list_alerts(limit)}
