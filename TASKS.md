@@ -106,11 +106,29 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
       plan, select up to four, compare side by side with best-value highlighting,
       and delete; offline mode explains that persistence needs the API.
 
+### Real-plant onboarding (prototype)
+- [x] Canonical `plant-telemetry-v1` schema: asset_id + cycle required, op1–op3
+      and s1–s21 optional; documented in `docs/ONBOARDING.md`.
+- [x] Column-mapping inspection with alias/sensor-pattern suggestions and
+      confidence; ambiguous C-MAPSS labels (Ps30, NRf, NRc) intentionally not
+      auto-mapped.
+- [x] Validation gate before storage or inference: required fields, duplicate
+      targets/keys, non-numeric values, missingness, cycle gaps, negative values,
+      short history and ordering; readiness + quality score + per-field issues.
+- [x] `plant_assets` registry with one parquet per asset, exact mapping stored
+      per asset, upsert on canonical asset id, readiness and score eligibility.
+- [x] Scoring gate: 422 with explicit reasons unless validated, all 21 sensors
+      mapped and at least 30 cycles; successful scores carry an
+      out-of-distribution warning.
+- [x] Data Onboarding page: file/paste, mapping table, validation report,
+      register action, registry with mapping preview and gated scoring.
+
 ### Verification
-- [x] `python -m pytest -q` — 49 passed (data, validation, features, metrics,
+- [x] `python -m pytest -q` — 59 passed (data, validation, features, metrics,
       decisions, API integration, RUL sequence inference, replay cursor and
       WebSocket protocol, strict-JSON frame safety, chronological forecasting,
-      alert identity/persistence/transitions, scenario persistence/comparison).
+      alert identity/persistence/transitions, scenario persistence/comparison,
+      onboarding mapping/validation/registry/scoring gate).
 - [x] `bun run typecheck` — clean.
 - [x] `bun run build` — Vite + Worker build, dist/sentinel/index.js produced.
 - [x] `bun test tests` — worker health/404 behaviour.
@@ -132,7 +150,9 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
 ## ⬜ Pending — next tasks, in order
 1. **Phase 4** — deep learning lab once disk/CUDA allow (DECISIONS D-008):
    sequence tensors, LSTM/GRU/1D-CNN/Transformer, early stopping, checkpoints.
-2. **Phase 6** — MLflow tracking + retraining workflow with promotion policy.
+2. **Onboarding** — OPC-UA/MQTT connector reusing the same validation contract;
+   timestamp parsing and unit conversion; retained asset versions.
+3. **Phase 6** — MLflow tracking + retraining workflow with promotion policy.
 
 ## Known limitations
 - Local metadata store is SQLite (`SENTINEL_DATABASE_URL` switches to PostgreSQL).

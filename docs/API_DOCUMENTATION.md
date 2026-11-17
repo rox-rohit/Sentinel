@@ -150,6 +150,20 @@ empirical interval and horizon risks.
 | GET | `/settings` | Cost model, health weights, thresholds |
 | GET | `/drift` | PSI report for both datasets |
 
+## Onboarding (real-plant CSV)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/onboarding/schema` | Canonical telemetry schema, aliases, required fields and limits |
+| POST | `/onboarding/inspect?filename=` | Raw CSV body → columns, samples, suggested mapping, unmapped list |
+| POST | `/onboarding/validate` | CSV + mapping → readiness, quality score, issues, scoring eligibility |
+| POST | `/onboarding/import` | Validated CSV + mapping → per-asset parquet and registry rows (422 if blocked) |
+| GET | `/onboarding/assets` | Registered plant assets with their exact mapping and readiness |
+| GET | `/onboarding/assets/{id}` | One registered asset |
+| POST | `/onboarding/assets/{id}/score` | Gated RUL inference; 422 with reasons if not eligible |
+
+Details: `docs/ONBOARDING.md`.
+
 ## Catalog
 
 | Method | Path | Description |

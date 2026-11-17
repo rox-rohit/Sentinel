@@ -8,7 +8,7 @@ validated data, predictions, explanations and budget-constrained maintenance
 decisions. It is built as a real system — a Python data/ML backend, a FastAPI
 service and a React operations console — on two public research datasets.
 
-![status](https://img.shields.io/badge/tests-49%20passing-2dd4a7)
+![status](https://img.shields.io/badge/tests-59%20passing-2dd4a7)
 ![python](https://img.shields.io/badge/python-3.11%2B-35d6f2)
 ![node](https://img.shields.io/badge/node-20%2B-35d6f2)
 
@@ -24,6 +24,7 @@ service and a React operations console — on two public research datasets.
 | What next? | Maintenance optimiser | Priority ranking + knapsack under budget, scenario costing |
 | What will the sensor do? | Sensor forecasting | Statistical baselines and gradient boosting, chronological validation |
 | Is it streaming? | Live monitoring | Recorded C-MAPSS replay over WebSocket, labelled simulated |
+| How does our data get in? | Plant onboarding | CSV → explicit column mapping → validation gate → per-asset registry |
 
 ## Screenshots
 
@@ -212,7 +213,11 @@ artifacts/           models, metrics, registry DB, snapshot (generated, git-igno
 - Anomaly severity is relative to an early-life healthy baseline.
 - AI4I's power/overheat/overstrain labels are deterministic functions of the
   recorded channels, so near-perfect mode PR-AUC reflects label construction.
-- No live sensor, MQTT or ESP32 integration exists; telemetry is recorded data.
+- No live sensor, MQTT or ESP32 integration exists; telemetry is recorded data. A CSV
+  onboarding path (mapping + validation + per-asset registry) exists, but there is
+  no OPC-UA/MQTT connector and no unit conversion.
+- The RUL model is trained on C-MAPSS; scoring an onboarded plant asset is an
+  out-of-distribution check, not a validated plant prediction.
 - Deep learning (LSTM/GRU/CNN/Transformer) and MLflow are **not** implemented in
   this environment; they are tracked in `TASKS.md` (disk / CUDA PyTorch limit).
 

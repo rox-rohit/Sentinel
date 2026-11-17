@@ -94,6 +94,13 @@ Deliverables: `PROJECT_VISION.md`, `SYSTEM_ARCHITECTURE.md`,
   side on avoided loss, total cost, spend, downtime, serviced assets and
   cost-efficiency, with asset overlap and best-value marking.
 
+- ✅ Real-plant onboarding prototype: CSV column mapping into
+  `plant-telemetry-v1`, explicit validation before storage or inference, a
+  per-asset registry that stores the exact mapping, and a scoring gate that
+  refuses assets without the full sensor contract.
+- ⬜ Live connector (OPC-UA/MQTT), unit conversion, timestamp partitioning and
+  retained asset versions.
+
 Verification for every page: it reads only fields that exist in the snapshot /
 API contract; the UI labels live vs artifact-snapshot mode in the top bar.
 

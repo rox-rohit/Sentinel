@@ -247,3 +247,34 @@ to the store, D-013).
 plans can become stale relative to the current fleet, so the record carries its
 creation timestamp and the page labels them as saved runs rather than current
 recommendations.
+
+## D-015 — Onboarding requires an explicit mapping and a passing validation gate
+
+**Context.** The research adapters can hardcode column names because the files
+are fixed. A plant export cannot be guessed: headers are local, sensors are
+partial and units are undocumented. Auto-detecting a mapping and importing
+immediately would produce plausible-looking rows that silently mean something
+else.
+
+**Decision.** Onboarding is a four-step contract: inspect (suggest aliases with
+confidence), map (every source column explicitly assigned or ignored), validate
+(coerce, check keys/order/missingness/history and report every issue with a
+severity), then import. Blocking errors refuse the import with 422; warnings
+allow storage but mark the asset not score-eligible. The registry stores the
+exact mapping per asset as JSON next to the canonical parquet, keyed by
+canonical asset id (upsert on re-import). Scoring is a separate gate: validated,
+all 21 sensors mapped, at least 30 cycles. Only then does the RUL model run, and
+the response states that applying a C-MAPSS model to plant data is an
+out-of-distribution check.
+
+**Alternatives rejected.** Fuzzy auto-mapping without confirmation (ambiguous
+labels such as Ps30, NRf and NRc map to two channels each); importing with
+warnings suppressed (operators cannot see what was assumed); scoring any stored
+asset regardless of coverage (the feature contract would silently produce NaNs
+or invented defaults); storing only one global mapping (different suppliers use
+different headers).
+
+**Consequences.** Bad data cannot reach a model, and every stored row is
+traceable to the mapping that produced it. The cost is operator effort: a new
+header set needs review, and an export with no cycle column or fewer than 30
+cycles is stored but cannot be scored.
