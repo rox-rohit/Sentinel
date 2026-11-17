@@ -2,6 +2,9 @@ import snapshotJson from '../generated/snapshot.json'
 import type {
   AlertInbox,
   AlertLifecycle,
+  OnboardingReport,
+  OnboardingInspection,
+  PlantAsset,
   ScenarioComparison,
   ScenarioSummary,
   Snapshot,
@@ -125,6 +128,50 @@ export async function deleteScenario(id: number): Promise<void> {
     const payload = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
     throw new Error(payload.error?.message ?? `Request failed (${response.status})`)
   }
+}
+
+export async function inspectPlantCsv(text: string, filename = 'upload.csv') {
+  const response = await fetch(
+    `${API_BASE}/onboarding/inspect?filename=${encodeURIComponent(filename)}`,
+    { method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: text },
+  )
+  const payload = (await response.json()) as OnboardingInspection & { error?: { message?: string } }
+  if (!response.ok) throw new Error(payload.error?.message ?? `Request failed (${response.status})`)
+  return payload
+}
+
+export async function validatePlantCsv(
+  csv_text: string,
+  mapping: Record<string, string>,
+  source_file = 'upload.csv',
+): Promise<OnboardingReport> {
+  return postJson<OnboardingReport>('/onboarding/validate', { csv_text, mapping, source_file })
+}
+
+export async function importPlantCsv(
+  name: string,
+  csv_text: string,
+  mapping: Record<string, string>,
+  source_file = 'upload.csv',
+) {
+  return postJson<{ report: OnboardingReport; assets: PlantAsset[] }>('/onboarding/import', {
+    name,
+    csv_text,
+    mapping,
+    source_file,
+  })
+}
+
+export async function fetchPlantAssets(): Promise<PlantAsset[]> {
+  const payload = await getJson<{ assets: PlantAsset[] }>('/onboarding/assets')
+  return payload.assets
+}
+
+export async function scorePlantAsset(id: number) {
+  return postJson<{
+    eligible: boolean
+    prediction: { predicted_rul: number; lower: number; upper: number; model: string; clip: number }
+  }>(`/onboarding/assets/${id}/score`, {})
 }
 
 async function postJson<T = Record<string, unknown>>(path: string, body: unknown): Promise<T> {

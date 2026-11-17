@@ -118,6 +118,86 @@ export interface ScenarioComparison {
   note: string
 }
 
+export interface OnboardingColumn {
+  source: string
+  target: string | null
+  confidence: number
+  dtype: string
+  missing_pct: number
+  unique: number
+  sample: (string | number | null)[]
+}
+
+export interface OnboardingInspection {
+  schema_version: string
+  rows: number
+  columns: OnboardingColumn[]
+  suggested_mapping: Record<string, string>
+  unmapped: string[]
+  required_targets: string[]
+  targets: string[]
+  source_file: string
+}
+
+export interface OnboardingIssue {
+  severity: 'error' | 'warning' | 'info'
+  code: string
+  message: string
+  column: string | null
+  count: number
+  pct: number
+}
+
+export interface OnboardingReport {
+  readiness: 'blocked' | 'warnings' | 'ready'
+  quality_score: number
+  rows: number
+  asset_count: number
+  assets: {
+    asset_id: string
+    rows: number
+    min_cycle: number
+    max_cycle: number
+    span: number
+    short_history: boolean
+  }[]
+  issues: OnboardingIssue[]
+  error_count: number
+  warning_count: number
+  scoring: {
+    eligible: boolean
+    reasons: string[]
+    mapped_sensors: number
+    missing_sensors: string[]
+    min_cycles_required: number
+  }
+  mapping: Record<string, string>
+  schema_version: string
+  source_file: string
+  preview: Record<string, string | number | null>[]
+  notes: string[]
+}
+
+export interface PlantAsset {
+  id: number
+  asset_id: string
+  name: string
+  source_file: string
+  status: 'ready' | 'registered'
+  score_eligible: boolean
+  rows: number
+  cycles: number
+  min_cycle: number
+  max_cycle: number
+  sensors: string[]
+  mapping: Record<string, string>
+  quality: OnboardingReport
+  parquet_path: string
+  notes: string | null
+  created_at: string
+  updated_at: string | null
+}
+
 export interface Snapshot {
   meta: {
     product: string

@@ -6,6 +6,7 @@ import { AnomalyCentre } from './pages/AnomalyCentre'
 import { AssetDetail } from './pages/AssetDetail'
 import { MachineIntelligence } from './pages/MachineIntelligence'
 import { DatasetManagement } from './pages/DatasetManagement'
+import { DataOnboarding } from './pages/DataOnboarding'
 import { Explainability } from './pages/Explainability'
 import { FleetOverview } from './pages/FleetOverview'
 import { ForecastPage } from './pages/ForecastPage'
@@ -45,6 +46,8 @@ function Routes() {
       return <ModelLaboratory />
     case '/datasets':
       return <DatasetManagement />
+    case '/onboarding':
+      return <DataOnboarding />
     case '/settings':
       return <SettingsPage />
     default:

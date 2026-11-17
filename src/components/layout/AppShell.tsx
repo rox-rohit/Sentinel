@@ -9,6 +9,7 @@ import {
   History,
   LayoutDashboard,
   Menu,
+  PlugZap,
   Radio,
   RefreshCw,
   Settings,
@@ -51,6 +52,7 @@ const NAV = [
     group: 'Platform',
     items: [
       { href: '/models', label: 'Model Laboratory', icon: FlaskConical },
+      { href: '/onboarding', label: 'Data Onboarding', icon: PlugZap },
       { href: '/datasets', label: 'Dataset Management', icon: Database },
       { href: '/settings', label: 'System Settings', icon: Settings },
     ],
@@ -69,6 +71,7 @@ const TITLES: Record<string, string> = {
   '/maintenance': 'Maintenance Optimiser',
   '/analytics': 'Historical Analytics',
   '/models': 'Model Laboratory',
+  '/onboarding': 'Plant Data Onboarding',
   '/datasets': 'Dataset Management',
   '/settings': 'System Settings',
 }
