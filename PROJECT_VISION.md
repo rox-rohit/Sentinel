@@ -56,7 +56,7 @@ dark, calm, and readable at a glance on a control-room display.
 | 5 | Failure-mode classification (AI4I multi-label, real labels only) | implemented |
 | 6 | RUL prediction (Ridge / RandomForest / XGBoost, NASA score, uncertainty) | implemented (classical); deep sequence models deferred |
 | 7 | Anomaly detection (IsolationForest, LOF, PCA reconstruction) | implemented |
-| 8 | Time-series forecasting | planned (Phase 4) |
+| 8 | Time-series forecasting (statistical baselines + gradient boosting, chronological validation) | implemented |
 | 9 | Deep learning laboratory (LSTM/GRU/CNN/Transformer, PyTorch) | planned — environment blocked, see DECISIONS D-008 |
 | 10 | Explainable AI (XGBoost exact SHAP contributions, permutation importance) | implemented |
 | 11 | Machine health scoring (transparent, configurable) | implemented |

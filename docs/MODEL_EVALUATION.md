@@ -136,3 +136,29 @@ positive expected benefit; deferred assets carry expected unplanned losses.
 - The health score has no ground-truth target to validate against; it is a
   transparent decision aid.
 - Costs are assumptions, so the optimiser's choices are conditional on them.
+
+---
+
+## Sensor forecasting (C-MAPSS FD001)
+
+Chronological per-engine split, 14,394 training rows and 6,237 test rows across
+100 engines. Mean MASE over horizons 1, 5 and 10 and four sensors:
+
+| Model | Mean MASE | Outcome |
+|---|---|---|
+| Exponential smoothing (α = 0.3) | **0.881** | Selected; wins all 12 sensor × horizon cells |
+| Moving average (15) | 0.987 | Beats persistence, loses to smoothing |
+| Persistence | 1.061 | Reference baseline |
+| HistGradientBoosting (change target) | 1.054 | Loses on the held-out tail |
+
+MASE is averaged only because it is scale-free; MAE is reported per sensor and
+horizon because the channels carry different units.
+
+**Why smoothing wins.** These four C-MAPSS channels are smooth, slowly drifting
+signals. Exponential smoothing carries the current level and adapts to the
+degradation trend, while a tree model trained on early life must extrapolate a
+level it has never seen. Forecasting the *change* instead of the level improved
+the boosted model (MASE 1.08 → 1.01 at h=1 on `s3`) but did not close the gap.
+This is recorded as a negative result rather than tuned away; a future
+sequence model (LSTM/GRU) is the natural next comparison and remains blocked by
+the environment (D-008).

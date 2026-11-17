@@ -50,6 +50,7 @@ All errors use one envelope:
 | GET | `/rul` | Official benchmark, comparison, points, fleet estimates |
 | GET | `/anomalies` | Severity distribution, histogram, recent alerts |
 | GET | `/explainability` | Global importance, samples, calibration, failure modes |
+| GET | `/forecast` | Sensor forecasting benchmark, best model per cell, example horizon window |
 
 ## Replay (recorded telemetry stream)
 

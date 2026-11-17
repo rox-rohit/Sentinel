@@ -88,3 +88,24 @@ view.
    the Ridge baseline on the same engine-wise split.
 3. Sensor forecasting baselines with chronological validation.
 4. Drift-triggered retraining with a documented promotion policy.
+
+---
+
+## 2026-11-17 — Sensor forecasting baselines vs gradient boosting
+
+- **Protocol.** Four C-MAPSS sensors (`s2`, `s3`, `s4`, `s11`), horizons 1–10,
+  chronological per-engine 70/30 split.
+- **Models.** Persistence, 15-cycle moving average, exponential smoothing
+  (α = 0.3), HistGradientBoosting (120 iterations, lr 0.08, leaf 20).
+- **Runs.**
+  1. Boosted model on absolute targets, exponential smoothing excluded from its
+     features → MASE 1.08 at h=1 (`s3`). Diagnosed as a feature omission.
+  2. Smoothing feature included → MASE 1.01 at h=1, still behind smoothing.
+  3. Target changed to the delta from the current value → best boosted result,
+     but exponential smoothing still wins every reported cell.
+- **Conclusion.** Exponential smoothing is selected (mean MASE 0.881 vs
+  persistence 1.061). Gradient boosting is retained in the comparison as a
+  documented negative result; tree extrapolation, not a coding defect, is the
+  limiting factor.
+- **Artifacts.** `artifacts/models/cmapss_sensor_forecast.joblib`, forecast
+  section in the snapshot, registry entry `cmapss_sensor_forecast`.

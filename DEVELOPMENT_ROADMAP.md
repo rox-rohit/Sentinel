@@ -53,8 +53,10 @@ Deliverables: `PROJECT_VISION.md`, `SYSTEM_ARCHITECTURE.md`,
 - ✅ XGBoost exact SHAP contributions + permutation importance.
 - ⬜ Deep learning (LSTM/GRU/1D-CNN/Transformer) — blocked by disk/CUDA
   environment (DECISIONS D-008); classical baselines already recorded.
-- ⬜ Sensor forecasting (baselines + gradient boosting) and chronological
-  validation.
+- ✅ Sensor forecasting: persistence / moving-average / exponential-smoothing
+  baselines plus gradient boosting, chronological per-engine validation
+  (70/30) and MAE/RMSE/MASE. Exponential smoothing wins; documented negative
+  result for the boosted model on held-out tails.
 
 ## Phase 5 — Decision intelligence ✅
 
@@ -82,7 +84,8 @@ Deliverables: `PROJECT_VISION.md`, `SYSTEM_ARCHITECTURE.md`,
 - ✅ Fleet Overview, Live Monitoring, Machine Intelligence, Digital Twin detail, Predictive
   Analytics, Anomaly Centre, RUL Intelligence, Explainability, Maintenance
   Optimiser, Model Laboratory, Dataset Management, Historical Analytics, Settings.
-- ⬜ Forecasting page, alert acknowledgement workflow, saved scenario comparison.
+- ✅ Forecasting page (sensor × horizon MASE table, example forecast);
+  ⬜ alert acknowledgement workflow, saved scenario comparison.
 
 Verification for every page: it reads only fields that exist in the snapshot /
 API contract; the UI labels live vs artifact-snapshot mode in the top bar.
@@ -94,5 +97,5 @@ API contract; the UI labels live vs artifact-snapshot mode in the top bar.
 
 ## Next recommended task
 
-Phase 4's forecasting module (baselines, gradient boosting, chronological
-validation), then its page. See `TASKS.md` for the granular list.
+Phase 7's alert lifecycle and saved scenario comparison, then MLflow tracking.
+See `TASKS.md` for the granular list.

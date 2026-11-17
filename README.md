@@ -22,6 +22,7 @@ service and a React operations console — on two public research datasets.
 | When? | RUL intelligence | Ridge / RF / XGBoost, engine-wise split, NASA score, residual bands |
 | Why? | Explainable AI | Permutation importance, occlusion attributions, reliability curve |
 | What next? | Maintenance optimiser | Priority ranking + knapsack under budget, scenario costing |
+| What will the sensor do? | Sensor forecasting | Statistical baselines and gradient boosting, chronological validation |
 | Is it streaming? | Live monitoring | Recorded C-MAPSS replay over WebSocket, labelled simulated |
 
 ## Screenshots
@@ -96,6 +97,24 @@ Failure classification on **UCI AI4I 2020**, stratified 75/25 split, 5-fold CV:
 Failure rate is 3.39%; accuracy is never used as the selection metric. The
 probability threshold is chosen on out-of-fold predictions by expected cost.
 
+Sensor forecasting on the same C-MAPSS trajectories, chronological split inside
+every engine (first 70% of cycles train, remaining 30% test):
+
+| Forecast model | Mean MASE (h=1,5,10) |
+|---|---|
+| **Exponential smoothing (selected)** | **0.881** |
+| Moving average (15) | 0.987 |
+| Persistence | 1.061 |
+| HistGradientBoosting | 1.054 |
+
+MASE below 1 means the model beats the naive last-value forecast. Per-sensor MAE
+is not averaged here because the channels have different units; it is reported
+per sensor and horizon on the Forecasting page. Exponential
+smoothing wins all 12 sensor × horizon cells; the boosted model is trained on
+the change from the current value because trees cannot extrapolate sensor
+levels, yet it still loses on the held-out tail — documented in
+`docs/MODEL_EVALUATION.md`.
+
 ## Architecture
 
 ```
@@ -160,7 +179,7 @@ bun test tests
 
 Fleet Overview · Machine Intelligence · Machine Digital Twin · Predictive
 Analytics · Live Monitoring · Anomaly Centre · RUL Intelligence · Explainable AI · Maintenance
-Optimiser · Historical Analytics · Model Laboratory · Dataset Management ·
+Optimiser · Forecasting · Historical Analytics · Model Laboratory · Dataset Management ·
 System Settings.
 
 ## Datasets
@@ -199,8 +218,8 @@ artifacts/           models, metrics, registry DB, snapshot (generated, git-igno
 
 ## Roadmap
 
-Phases 0–3, 5 and the replay part of 6 are implemented and verified. Next:
-forecasting, deep-learning lab, MLflow, then the portfolio release pack. See
+Phases 0–5, the replay part of 6 and forecasting are implemented and verified.
+Next: alert lifecycle, MLflow, deep-learning lab, then the portfolio release pack. See
 `DEVELOPMENT_ROADMAP.md` and `TASKS.md`.
 
 ## Attribution

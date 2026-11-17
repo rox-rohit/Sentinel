@@ -133,3 +133,28 @@ Population Stability Index between reference and current samples, on AI4I sensor
 features (first vs second half of the process sequence) and C-MAPSS sensors
 (units ≤ median vs units > median). PSI ≥ 0.25 is flagged as drift. C-MAPSS PSI
 includes genuine degradation, which is stated in the payload.
+
+---
+
+## Sensor forecasting
+
+Task: from history up to cycle `t`, predict a sensor value at `t + h` for
+horizons 1–10. This is not RUL and not a recursive simulation; each horizon has
+its own direct model.
+
+- **Causal features.** Lags 1/2/3/5/10, rolling mean and std over 5/15/30 cycles,
+  one- and five-cycle differences, cycle index, current value and an
+  exponentially smoothed level (α = 0.3). Every rolling window is shifted by one
+  cycle, so a value at `t` cannot enter its own feature vector.
+- **Models.** Persistence (last value repeated), 15-cycle moving average,
+  exponential smoothing, and HistGradientBoosting on the same features.
+- **Level handling.** Trees cannot output values outside their training range,
+  and the held-out tail of a degrading engine sits above that range. The boosted
+  model therefore predicts the **change** from the current value; the change is
+  added back at prediction time.
+- **Validation.** Chronological split inside every engine: first 70% of cycles
+  train, remaining 30% test. No shuffling, no shared engine between train and
+  test, no future windows.
+- **Metrics.** MAE, RMSE and MASE. MASE divides the mean absolute error by the
+  naive one-step error on training rows, so sensors with different units are
+  comparable and a value below 1 means the model beats persistence.

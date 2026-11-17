@@ -45,6 +45,21 @@ Updated: 2026-11-15 (Phase 0–3, 5 foundation; Phase 6 replay streaming)
 - [x] Maintenance prioritisation and budget-constrained knapsack selection.
 - [x] Reactive vs preventive vs predictive cost scenarios.
 
+### Phase 4 — Sensor forecasting
+- [x] Causal lag/rolling/EMA features per sensor, shifted so cycle t never
+      contributes to its own feature vector.
+- [x] Persistence, moving-average, exponential-smoothing baselines and a
+      gradient-boosted model on a change-from-current target (trees cannot
+      extrapolate sensor levels).
+- [x] Chronological validation per engine (first 70% train, remaining 30% test)
+      with MAE, RMSE and MASE; no shuffling and no future windows.
+- [x] Build artifact, registry entry (`cmapss_sensor_forecast`), `GET /forecast`
+      and a Forecasting page with the sensor × horizon comparison table and an
+      example forecast against recorded actuals.
+- [x] Result: exponential smoothing wins all 12 reported cells (mean MASE
+      0.881 vs persistence 1.061, 17% better); gradient boosting underperforms
+      on the held-out tail. Recorded as an honest negative result.
+
 ### Phase 6 — Replay streaming
 - [x] Build exports `artifacts/replay.parquet`: every recorded test cycle with
       its RUL, band, risk, anomaly score/severity and health.
@@ -59,9 +74,9 @@ Updated: 2026-11-15 (Phase 0–3, 5 foundation; Phase 6 replay streaming)
 - [x] NaN/Infinity normalised to null so browsers can parse every frame.
 
 ### Verification
-- [x] `python -m pytest -q` — 30 passed (data, validation, features, metrics,
+- [x] `python -m pytest -q` — 36 passed (data, validation, features, metrics,
       decisions, API integration, RUL sequence inference, replay cursor and
-      WebSocket protocol, strict-JSON frame safety).
+      WebSocket protocol, strict-JSON frame safety, chronological forecasting).
 - [x] `bun run typecheck` — clean.
 - [x] `bun run build` — Vite + Worker build, dist/sentinel/index.js produced.
 - [x] `bun test tests` — worker health/404 behaviour.
@@ -72,14 +87,11 @@ Updated: 2026-11-15 (Phase 0–3, 5 foundation; Phase 6 replay streaming)
 - [ ] Alert lifecycle (generated + listed; no acknowledgement endpoint yet).
 
 ## ⬜ Pending — next tasks, in order
-1. **Phase 4** — forecasting module: moving-average/ETS baselines, gradient
-   boosting, chronological validation, MAE/RMSE/MASE.
-2. **Phase 4** — deep learning lab once disk/CUDA allow (DECISIONS D-008):
+1. **Phase 4** — deep learning lab once disk/CUDA allow (DECISIONS D-008):
    sequence tensors, LSTM/GRU/1D-CNN/Transformer, early stopping, checkpoints.
-3. **Phase 7** — forecasting page, scenario comparison persistence,
-   alert acknowledgement.
-4. **Phase 6** — MLflow tracking + retraining workflow with promotion policy.
-5. **Phase 8** — architecture diagram, screenshots, technical report, video script.
+2. **Phase 7** — alert acknowledgement workflow and saved scenario comparison.
+3. **Phase 6** — MLflow tracking + retraining workflow with promotion policy.
+4. **Phase 8** — architecture diagram, technical report, video script.
 
 ## Known limitations
 - Local metadata store is SQLite (`SENTINEL_DATABASE_URL` switches to PostgreSQL).

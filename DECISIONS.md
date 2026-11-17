@@ -173,3 +173,25 @@ real-time architecture without pretending to be a digital twin of physical
 hardware. An MQTT/OPC-UA adapter can later replace the artifact source behind
 the same message contract. RUL bands and anomaly severity are absent in the
 offline artifact fallback rather than being invented.
+
+---
+
+## D-012 — Forecasting uses direct multi-horizon models with a per-engine chronological split
+
+**Context.** Sensor forecasting asks for cycle `t+h` from history up to `t`, which
+is a different task from RUL. Shuffling rows or using a random split would leak
+later cycles into training and inflate the score.
+
+**Decision.** For each of four C-MAPSS sensors, build causal lag/rolling/EMA
+features (all windows shifted by one cycle) and predict horizons 1–10 directly.
+Compare persistence, a 15-cycle moving average, exponential smoothing (α=0.3)
+and HistGradientBoosting. Split chronologically *inside every engine*: first 70%
+of cycles train, remaining cycles test. Report MAE, RMSE and MASE (scaled by the
+naive one-step error on training rows). Trees predict the change from the current
+value rather than the absolute level, because a tree cannot output values beyond
+its training range and the degrading tail lies above it.
+
+**Consequences.** Exponential smoothing wins all 12 reported sensor × horizon
+cells (mean MASE 0.881) against persistence (1.061); the boosted model reaches
+1.054 and is kept as an honest negative baseline. No recursive simulation or
+future values are used, and the page states this explicitly.
