@@ -174,6 +174,59 @@ export interface Snapshot {
     }
     limitations: string[]
   }
+  forecast: {
+    sensors: { key: string; label: string }[]
+    horizons: number[]
+    all_horizons: number[]
+    models: string[]
+    validation: {
+      protocol: string
+      train_fraction: number
+      train_rows: number
+      test_rows: number
+      units: number
+      ses_alpha: number
+    }
+    comparison: {
+      sensor: string
+      label: string
+      horizon: number
+      model: string
+      mae: number
+      rmse: number
+      mase: number
+    }[]
+    best: {
+      sensor: string
+      label: string
+      horizon: number
+      model: string
+      mae: number
+      rmse: number
+      mase: number
+    }[]
+    summary: {
+      best_model: string
+      wins: Record<string, number>
+      mean_best_mase: number | null
+      mean_persistence_mase: number | null
+      improvement_vs_persistence_pct: number | null
+    }
+    example: {
+      asset_id: string | null
+      origin_cycle: number | null
+      series: {
+        sensor: string
+        label: string
+        asset_id: string
+        origin_cycle: number
+        horizons: number[]
+        actual: number[]
+        forecast: number[]
+      }[]
+    }
+    limitations: string[]
+  }
   maintenance: {
     budget: number
     spent: number

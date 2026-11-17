@@ -38,7 +38,7 @@ export async function loadDataset(): Promise<DatasetState> {
   try {
     const status = await getJson<{ status: string; build_version: string }>('/health')
     if (status.status !== 'ok') throw new Error('API reported a degraded state')
-    const [fleet, assets, alerts, predictive, anomalies, rul, explainability, maintenance] =
+    const [fleet, assets, alerts, predictive, anomalies, rul, explainability, maintenance, forecast] =
       await Promise.all([
         getJson<Snapshot['fleet']>('/fleet/summary'),
         getJson<{ assets: Snapshot['assets'] }>('/fleet/assets?sort=health'),
@@ -48,6 +48,7 @@ export async function loadDataset(): Promise<DatasetState> {
         getJson<Snapshot['rul']>('/rul'),
         getJson<Snapshot['explainability']>('/explainability'),
         getJson<Snapshot['maintenance']>('/maintenance'),
+        getJson<Snapshot['forecast']>('/forecast'),
       ])
     const data: Snapshot = {
       ...SNAPSHOT,
@@ -59,6 +60,7 @@ export async function loadDataset(): Promise<DatasetState> {
       rul,
       explainability,
       maintenance,
+      forecast,
     }
     return { data, source: 'live', error: null }
   } catch (error) {

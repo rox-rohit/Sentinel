@@ -14,6 +14,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
   Wrench,
   X,
   Wifi,
@@ -35,6 +36,7 @@ const NAV = [
       { href: '/predictive', label: 'Predictive Analytics', icon: Activity },
       { href: '/anomalies', label: 'Anomaly Centre', icon: AlertTriangle },
       { href: '/rul', label: 'RUL Intelligence', icon: History },
+      { href: '/forecast', label: 'Forecasting', icon: TrendingUp },
     ],
   },
   {
@@ -62,6 +64,7 @@ const TITLES: Record<string, string> = {
   '/predictive': 'Predictive Analytics',
   '/anomalies': 'Anomaly Detection Centre',
   '/rul': 'RUL Intelligence',
+  '/forecast': 'Sensor Forecasting',
   '/explainability': 'Explainable AI',
   '/maintenance': 'Maintenance Optimiser',
   '/analytics': 'Historical Analytics',

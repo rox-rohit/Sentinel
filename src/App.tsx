@@ -8,6 +8,7 @@ import { MachineIntelligence } from './pages/MachineIntelligence'
 import { DatasetManagement } from './pages/DatasetManagement'
 import { Explainability } from './pages/Explainability'
 import { FleetOverview } from './pages/FleetOverview'
+import { ForecastPage } from './pages/ForecastPage'
 import { HistoricalAnalytics } from './pages/HistoricalAnalytics'
 import { LiveMonitoring } from './pages/LiveMonitoring'
 import { MaintenanceOptimiser } from './pages/MaintenanceOptimiser'
@@ -32,6 +33,8 @@ function Routes() {
       return <LiveMonitoring />
     case '/rul':
       return <RULIntelligence />
+    case '/forecast':
+      return <ForecastPage />
     case '/explainability':
       return <Explainability />
     case '/maintenance':
