@@ -307,3 +307,31 @@ changed, and the review is recorded in the response and in the asset's quality
 report. The cost is that a genuinely renamed column with no name similarity is
 treated as missing + added and needs manual mapping; profile baseline history is
 not retained, only the current expected schema.
+
+## D-017 — Partial-sensor assets get their own baseline and a relative health signal
+
+**Context.** The onboarding gate required all 21 C-MAPSS sensors before an asset
+could be scored. Most real exports map a handful of channels, so those assets
+were registered but operationally silent — no health, no alert, nothing in the
+console. Imputing 21 sensors or borrowing a fleet baseline would fabricate data.
+
+**Decision.** At import, each asset learns a baseline from its first 10–30 cycles
+(or 30% of its history): per mapped sensor, robust median, MAD-derived scale and
+natural slope over cycle. Health compares the latest cycle with that detrended
+baseline, averages the largest robust z-scores, adds a short-term worsening-trend
+penalty and publishes an explicit coverage/confidence level. One sensor with 10
+cycles is the technical minimum, three sensors with 20 cycles the recommended
+minimum for a usable signal, six or more sensors high confidence. Usable
+warning/critical assessments create `plant_health` alerts with source `plant`;
+C-MAPSS alert synchronisation is scoped to source `cmapss` and cannot prune them.
+The 21-sensor RUL score stays an unchanged, explicit opt-in.
+
+**Alternatives rejected.** Requiring all 21 sensors (silent assets); imputing
+missing channels (invented data); one fleet baseline (different units and
+operating points); showing a score without coverage (false confidence); lowering
+the RUL sensor gate (out-of-distribution model contract).
+
+**Consequences.** Partial exports become operationally visible and alerting works
+from the first usable export. The health number is relative to the asset's own
+baseline and is not a remaining-life estimate; a baseline captured during a fault
+normalises that fault, and plant alerts persist until an operator resolves them.

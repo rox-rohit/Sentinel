@@ -139,6 +139,61 @@ Ambiguity is handled conservatively: a rename must be a close normalised match,
 and a column that merely disappeared is never silently mapped onto an unrelated
 new column.
 
+## Partial-sensor health and baselines
+
+A real export rarely has all 21 C-MAPSS channels. Refusing to say anything about
+such an asset hid the most common onboarding case, so each asset now gets its
+own baseline and a health signal from whatever sensors are mapped. No missing
+sensor is imputed, and no fleet baseline is borrowed.
+
+**Baseline.** Built at import from the asset's first cycles: up to 30 cycles, at
+least 10, or 30% of the history when that is larger. For every mapped sensor it
+stores the median, robust scale (MAD × 1.4826) and natural slope versus cycle.
+The baseline is stored with the registry entry and is what later imports and
+recomputes are compared against — accepting schema drift does not silently
+relearn it.
+
+**Score.** At the latest cycle each sensor's value is compared with its
+detrended expected value; the robust z-scores are averaged over the three largest
+departures. Short-term worsening slopes add a trend penalty. Health is
+`100 − anomaly penalty − trend penalty`, mapped to the same healthy/attention/
+warning/critical bands as the C-MAPSS health score. A 2-sigma band is treated as
+normal variation, so a stable asset stays healthy.
+
+**How much data produces a usable signal?**
+
+| Mapped sensors | Cycles | Result |
+|---|---|---|
+| 0 | any | no signal: nothing to baseline |
+| 1–2 | ≥ 10 | relative signal, **low** confidence |
+| 3–5 | ≥ 10 (20 recommended) | **usable** signal, medium confidence |
+| ≥ 6 | ≥ 20 | **high** confidence |
+| 21 | ≥ 30 | RUL eligible, still opt-in |
+
+The headline answer: **one mapped sensor with 10 cycles is the technical
+minimum**, **three sensors with 20 cycles is the recommended minimum for a
+usable signal**, and six or more sensors give high confidence. Full RUL is
+unchanged: all 21 sensors, 30 cycles, explicit score action.
+
+**Alerts.** When a usable assessment reaches high/critical anomaly severity or
+warning/critical health, a `plant_health` alert (source `plant`) enters the same
+inbox with the asset's health, top departing sensor, baseline length and
+confidence. C-MAPSS alert synchronisation only manages source `cmapss`, so a
+pipeline rebuild cannot delete plant alerts. Plant alerts are acknowledged and
+resolved through the normal alert lifecycle; they are not auto-resolved when an
+asset later improves.
+
+**Surfaces.** The registry row shows health, severity, baseline length and
+confidence with a *Health* action that recomputes from stored telemetry. Fleet
+Overview adds an *Onboarded plant assets* panel (only when assets exist), and
+`GET /onboarding/health` returns the same summary, thresholds and guidance
+without mixing plant health into C-MAPSS fleet KPIs.
+
+```bash
+curl http://127.0.0.1:8000/api/v1/onboarding/health
+curl -X POST http://127.0.0.1:8000/api/v1/onboarding/assets/1/health
+```
+
 ## Asset registry
 
 `plant_assets` is keyed by canonical `asset_id` and upserts on re-import:
@@ -190,6 +245,10 @@ curl -X POST http://127.0.0.1:8000/api/v1/onboarding/profiles/1/apply \
 curl -X POST http://127.0.0.1:8000/api/v1/onboarding/import \
      -H "Content-Type: application/json" \
      -d '{"name":"Vendor A","profile_id":1,"csv_text":"...","accept_drift":false}'
+
+# 6. partial-sensor health, baselines and the plant alert feed
+curl http://127.0.0.1:8000/api/v1/onboarding/health
+curl -X POST http://127.0.0.1:8000/api/v1/onboarding/assets/1/health
 ```
 
 Limits: 5 MB per upload, 250,000 rows, delimiter sniffed from the file.
@@ -213,3 +272,10 @@ Limits: 5 MB per upload, 250,000 rows, delimiter sniffed from the file.
 - **Accepted drift replaces the profile baseline.** There is no version history
   of a profile's previous schemas, only the current one and the per-import
   report recorded with each asset's quality data.
+- **Plant health is relative, not absolute.** A baseline learned during a fault
+  treats that fault as normal; the baseline is not relearned on every import.
+  Fewer mapped sensors and a short baseline reduce confidence rather than
+  blocking the signal.
+- **Partial-sensor health is not a remaining-life estimate.** It detects
+  departure and trend; the 21-sensor RUL check stays a separate opt-in and an
+  out-of-distribution use of the C-MAPSS model.

@@ -101,6 +101,10 @@ Deliverables: `PROJECT_VISION.md`, `SYSTEM_ARCHITECTURE.md`,
 - ✅ Repeatable onboarding: saved mapping profiles per source/vendor, drift
   detection for renamed/added/missing columns on every reuse, acknowledgement
   before import, and a profile baseline refreshed after accepted drift.
+- ✅ Partial-sensor operations: a stored per-asset early-cycle baseline, robust
+  anomaly and trend health on the mapped channels, confidence based on sensor
+  coverage, plant health in Fleet Overview and plant alerts in the inbox. RUL
+  remains opt-in behind the 21-sensor contract.
 - ⬜ Live connector (OPC-UA/MQTT), unit conversion, timestamp partitioning and
   retained asset versions.
 

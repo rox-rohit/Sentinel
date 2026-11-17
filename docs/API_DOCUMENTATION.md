@@ -158,8 +158,10 @@ empirical interval and horizon risks.
 | POST | `/onboarding/inspect?filename=` | Raw CSV body → columns, samples, suggested mapping, unmapped list |
 | POST | `/onboarding/validate` | CSV + mapping → readiness, quality score, issues, scoring eligibility |
 | POST | `/onboarding/import` | Validated CSV + mapping → per-asset parquet and registry rows (422 if blocked) |
-| GET | `/onboarding/assets` | Registered plant assets with their exact mapping and readiness |
+| GET | `/onboarding/assets` | Registered plant assets with mapping, readiness, baseline and health |
+| GET | `/onboarding/health` | Partial-sensor health, coverage confidence, thresholds and guidance |
 | GET | `/onboarding/assets/{id}` | One registered asset |
+| POST | `/onboarding/assets/{id}/health` | Recompute baseline-relative health and refresh the plant alert |
 | POST | `/onboarding/assets/{id}/score` | Gated RUL inference; 422 with reasons if not eligible |
 | GET | `/onboarding/profiles` | Saved mapping profiles with source, mapping and use count |
 | POST | `/onboarding/profiles` | Save a profile (unique name; 409 on duplicate) |

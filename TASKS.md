@@ -131,9 +131,17 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
       the profile baseline for the next export.
 - [x] Drift surfaced in validation and apply responses and in the onboarding UI
       with renamed/added/missing rows and an explicit acknowledgement checkbox.
+- [x] Per-asset partial-sensor baseline: first 10–30 cycles (or 30%), robust
+      median/MAD and natural slope per mapped sensor, stored with the registry.
+- [x] Baseline-relative anomaly and trend health on whatever sensors exist;
+      explicit coverage/confidence and a documented minimum-signal contract.
+- [x] Plant health surfaced in the registry, Fleet Overview (separate panel) and
+      `/onboarding/health`; high/critical assessments create `plant_health`
+      alerts that C-MAPSS synchronisation cannot prune.
+- [x] Full 21-sensor RUL remains an explicit opt-in behind the existing gate.
 
 ### Verification
-- [x] `python -m pytest -q` — 68 passed (data, validation, features, metrics,
+- [x] `python -m pytest -q` — 73 passed (data, validation, features, metrics,
       decisions, API integration, RUL sequence inference, replay cursor and
       WebSocket protocol, strict-JSON frame safety, chronological forecasting,
       alert identity/persistence/transitions, scenario persistence/comparison,
