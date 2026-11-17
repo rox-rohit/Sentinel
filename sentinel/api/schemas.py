@@ -61,6 +61,15 @@ class MaintenanceRequest(BaseModel):
     assets: list[MaintenanceAsset] | None = None
 
 
+class MaintenanceScenarioRequest(BaseModel):
+    """Save the optimisation result for a budget under a comparable name."""
+
+    name: str = Field(..., min_length=1, max_length=80)
+    budget: float = Field(..., gt=0, le=1_000_000)
+    note: str | None = Field(None, max_length=500)
+    assets: list[MaintenanceAsset] | None = None
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str

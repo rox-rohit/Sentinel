@@ -85,6 +85,20 @@ class AlertRecord(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class MaintenanceScenarioRecord(Base):
+    __tablename__ = "maintenance_scenarios"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(80), index=True)
+    note: Mapped[str] = mapped_column(Text, nullable=True)
+    budget: Mapped[float] = mapped_column(Float)
+    spent: Mapped[float] = mapped_column(Float, default=0.0)
+    expected_avoided_loss: Mapped[float] = mapped_column(Float, default=0.0)
+    expected_downtime_hours: Mapped[float] = mapped_column(Float, default=0.0)
+    assets_serviced: Mapped[int] = mapped_column(Integer, default=0)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 engine = create_engine(settings.database_url, future=True, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, future=True)
 
@@ -268,6 +282,62 @@ def resolve_alert(alert_id: int, *, actor: str, note: str | None = None) -> dict
         record.updated_at = _utcnow()
         session.flush()
         return _alert_payload(record)
+
+
+def _scenario_payload(record: MaintenanceScenarioRecord, *, include_plan: bool = False) -> dict:
+    from sentinel.decision.scenarios import summarize_plan
+
+    plan = json.loads(record.payload_json)
+    payload = summarize_plan(
+        plan, scenario_id=record.id, name=record.name, note=record.note,
+        created_at=record.created_at.isoformat(),
+    )
+    if include_plan:
+        payload["plan"] = plan
+    return payload
+
+
+def save_scenario(name: str, plan: dict, note: str | None = None) -> dict:
+    """Persist a computed optimisation plan under a human-readable name."""
+    with session_scope() as session:
+        record = MaintenanceScenarioRecord(
+            name=name.strip(),
+            note=note,
+            budget=float(plan.get("budget", 0.0)),
+            spent=float(plan.get("spent", 0.0)),
+            expected_avoided_loss=float(plan.get("expected_avoided_loss", 0.0)),
+            expected_downtime_hours=float(plan.get("expected_downtime_hours", 0.0)),
+            assets_serviced=len(plan.get("selected", [])),
+            payload_json=json.dumps(plan, default=str),
+        )
+        session.add(record)
+        session.flush()
+        return _scenario_payload(record)
+
+
+def list_scenarios(limit: int = 50) -> list[dict]:
+    with session_scope() as session:
+        rows = session.scalars(
+            select(MaintenanceScenarioRecord)
+            .order_by(MaintenanceScenarioRecord.created_at.desc())
+            .limit(limit)
+        ).all()
+        return [_scenario_payload(row) for row in rows]
+
+
+def get_scenario(scenario_id: int) -> dict | None:
+    with session_scope() as session:
+        record = session.get(MaintenanceScenarioRecord, scenario_id)
+        return _scenario_payload(record, include_plan=True) if record else None
+
+
+def delete_scenario(scenario_id: int) -> bool:
+    with session_scope() as session:
+        record = session.get(MaintenanceScenarioRecord, scenario_id)
+        if record is None:
+            return False
+        session.delete(record)
+        return True
 
 
 def sync_alerts(alerts: list[dict], *, prune: bool = True) -> dict:
