@@ -31,6 +31,7 @@ from sentinel.logging_setup import get_logger
 from sentinel.models.anomaly import fit_anomaly_detectors
 from sentinel.models.classification import train_failure_classifier
 from sentinel.models.explain import humanize_explanation, occlusion_explanation
+from sentinel.models.forecast import train_sensor_forecast
 from sentinel.models.evaluation import psi, psi_status
 from sentinel.models.rul import build_rul_frames, train_rul_model
 from sentinel.models.store import read_meta
@@ -336,6 +337,9 @@ def build() -> dict:
     classifier_result = train_failure_classifier(ai4i_frame)
     explainability = _ai4i_explanations(classifier_result, ai4i_frame)
 
+    log.info("training sensor forecast models")
+    forecast_result = train_sensor_forecast(cmapss_frame)
+
     plan = build_plan(
         [
             {
@@ -377,6 +381,15 @@ def build() -> dict:
          "comparison": classifier_result.comparison},
         {"features": len(classifier_result.feature_names), "seed": settings.random_seed},
     )
+    _register_model(
+        "cmapss_sensor_forecast", "sensor_forecasting", "cmapss",
+        forecast_result.payload["summary"]["best_model"],
+        {"summary": forecast_result.payload["summary"],
+         "best": forecast_result.payload["best"]},
+        {"sensors": list(forecast_result.payload["sensors"]),
+         "horizons": forecast_result.payload["all_horizons"],
+         "train_fraction": forecast_result.payload["validation"]["train_fraction"]},
+    )
 
     drift = _drift_report(cmapss_frame, ai4i_frame)
     meta = {
@@ -408,6 +421,7 @@ def build() -> dict:
         anomaly_result=anomaly_result,
         maintenance=maintenance,
         explainability=explainability,
+        forecast=forecast_result.payload,
         drift=drift,
         models=list_models(),
         datasets=list_datasets(),

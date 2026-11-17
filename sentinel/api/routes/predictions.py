@@ -50,3 +50,8 @@ def anomalies(service: SentinelService = Depends(service_dependency)) -> dict:
 @router.get("/explainability", summary="Global and local model explanations")
 def explainability(service: SentinelService = Depends(service_dependency)) -> dict:
     return service.snapshot()["explainability"]
+
+
+@router.get("/forecast", summary="Sensor forecasting benchmark and example forecasts")
+def forecast(service: SentinelService = Depends(service_dependency)) -> dict:
+    return service.snapshot()["forecast"]

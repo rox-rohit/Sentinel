@@ -114,3 +114,13 @@ def test_rul_sequence_requires_enough_history():
         json={"readings": [{"cycle": 1, **{f"s{i}": 1.0 for i in range(1, 22)}}]},
     )
     assert response.status_code == 422
+
+
+def test_forecast_route_exposes_chronological_results():
+    response = client.get("/api/v1/forecast")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["comparison"]
+    assert body["best"]
+    assert body["validation"]["protocol"]
+    assert body["summary"]["best_model"]

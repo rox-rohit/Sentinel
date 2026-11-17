@@ -52,7 +52,8 @@ def _anomaly_histogram(frame, bins: int = 24) -> dict:
 
 
 def compose_snapshot(*, meta, assets, alerts, rul_result, classifier_result, anomaly_result,
-                     maintenance, explainability, drift, models, datasets, eda) -> dict:
+                     maintenance, explainability, drift, models, datasets, eda,
+                     forecast) -> dict:
     summary = {
         "total": len(assets),
         "healthy": sum(1 for a in assets if a["status"] == "healthy"),
@@ -180,6 +181,7 @@ def compose_snapshot(*, meta, assets, alerts, rul_result, classifier_result, ano
         "anomalies": anomaly_center,
         "rul": rul_page,
         "explainability": explainability,
+        "forecast": forecast,
         "maintenance": maintenance,
         "models": models,
         "datasets": datasets,
