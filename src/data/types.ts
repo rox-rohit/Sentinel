@@ -210,6 +210,98 @@ export interface MappingProfile {
   last_used_at: string | null
 }
 
+export interface PlantHealthSensor {
+  sensor: string
+  value: number
+  baseline_median: number
+  expected: number
+  z_score: number
+  deviation: number
+  recent_slope: number
+  trend_z: number
+}
+
+export interface PlantHealth {
+  usable: boolean
+  reasons?: string[]
+  health_score?: number
+  category?: HealthCategory
+  anomaly_score?: number
+  severity?: Severity
+  trend_score?: number
+  components?: { anomaly_penalty: number; trend_penalty: number }
+  sensors?: PlantHealthSensor[]
+  top_sensor?: string
+  cycle?: number
+  assessed_at?: string
+  explanation?: string
+  coverage: {
+    sensors: number
+    baseline_cycles: number
+    confidence: 'none' | 'low' | 'medium' | 'high'
+    min_sensors_for_signal: number
+    recommended_sensors: number
+    high_confidence_sensors: number
+  }
+  limitations?: string[]
+}
+
+export interface BackendPlantAsset extends PlantAsset {
+  baseline: {
+    baseline_cycles: number
+    baseline_from: number
+    baseline_to: number
+    sensors: Record<string, { median: number; mad: number; slope: number; count: number }>
+  } | null
+  health: PlantHealth | null
+  health_score: number | null
+  health_status: HealthCategory | null
+  anomaly_score: number | null
+  severity: Severity | null
+  baseline_cycles: number
+}
+
+export interface PlantHealthOverview {
+  assets: {
+    id: number
+    asset_id: string
+    name: string
+    cycles: number
+    sensors: number
+    baseline_cycles: number
+    health_score: number | null
+    health_status: HealthCategory | null
+    anomaly_score: number | null
+    severity: Severity | null
+    confidence: 'none' | 'low' | 'medium' | 'high' | null
+    usable: boolean
+    reasons: string[]
+    score_eligible: boolean
+  }[]
+  summary: {
+    total: number
+    with_signal: number
+    without_signal: number
+    rul_eligible: number
+    healthy: number
+    attention: number
+    warning: number
+    critical: number
+  }
+  thresholds: Record<string, unknown>
+  minimum_signal: {
+    sensors: number
+    cycles: number
+    usable_sensors: number
+    usable_cycles: number
+    high_confidence_sensors: number
+    rul_sensors: number
+    rul_cycles: number
+  }
+  guidance: string
+  limitations: string[]
+}
+
 export interface PlantAsset {
   id: number
   asset_id: string

@@ -12,6 +12,7 @@ import {
   fetchPlantAssets,
   importPlantCsv,
   inspectPlantCsv,
+  recomputePlantHealth,
   saveMappingProfile,
   scorePlantAsset,
   validatePlantCsv,
@@ -19,10 +20,10 @@ import {
 import { useData } from '../lib/data-context'
 import { number } from '../lib/format'
 import type {
+  BackendPlantAsset,
   MappingProfile,
   OnboardingInspection,
   OnboardingReport,
-  PlantAsset,
   SchemaDrift,
 } from '../data/types'
 
@@ -45,7 +46,7 @@ export function DataOnboarding() {
   const [inspection, setInspection] = useState<OnboardingInspection | null>(null)
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [report, setReport] = useState<OnboardingReport | null>(null)
-  const [registry, setRegistry] = useState<PlantAsset[]>([])
+  const [registry, setRegistry] = useState<BackendPlantAsset[]>([])
   const [profiles, setProfiles] = useState<MappingProfile[]>([])
   const [profileName, setProfileName] = useState('')
   const [selectedProfile, setSelectedProfile] = useState<MappingProfile | null>(null)
@@ -145,7 +146,29 @@ export function DataOnboarding() {
     }
   }
 
-  async function handleScore(asset: PlantAsset) {
+  async function handleHealth(asset: BackendPlantAsset) {
+    setBusy(asset.id)
+    setError(null)
+    setScoreMessage(null)
+    try {
+      const result = await recomputePlantHealth(asset.id)
+      const health = result.health
+      await refreshRegistry()
+      setScoreMessage(
+        health.usable
+          ? `${asset.name}: health ${health.health_score}/100 (${health.category}) from `
+            + `${health.coverage.sensors} sensor(s), ${health.coverage.baseline_cycles}-cycle `
+            + `baseline, ${health.coverage.confidence} confidence.`
+          : `${asset.name}: no usable signal yet — ${(health.reasons ?? []).join(' ')}`,
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Health refresh failed')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleScore(asset: BackendPlantAsset) {
     setBusy(asset.id)
     setError(null)
     setScoreMessage(null)
@@ -602,7 +625,7 @@ export function DataOnboarding() {
         action={<Badge tone="neutral">{registry.length} registered</Badge>}
         bodyClassName="p-0"
       >
-        <Table head={['Asset', 'Canonical id', 'Status', 'Cycles', 'Sensors', 'Mapping', 'Score']}>
+        <Table head={['Asset', 'Canonical id', 'Status', 'Health', 'Coverage', 'Cycles', 'Sensors', 'Mapping', 'Actions']}>
           {registry.map((asset) => (
             <Row key={asset.id}>
               <Cell className="text-fg">{asset.name}</Cell>
@@ -610,9 +633,26 @@ export function DataOnboarding() {
               <Cell>
                 <Badge tone={asset.status === 'ready' ? 'healthy' : 'medium'}>{asset.status}</Badge>
               </Cell>
+              <Cell>
+                {asset.health_score != null ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Badge tone={(asset.health_status ?? 'attention') as 'healthy' | 'attention' | 'warning' | 'critical'}>
+                      {number(asset.health_score, 0)}
+                    </Badge>
+                    <span className="text-[10px] text-faint">{asset.severity}</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-faint" title={(asset.health?.reasons ?? []).join(' ')}>
+                    no signal
+                  </span>
+                )}
+              </Cell>
+              <Cell className="text-[10px] text-muted">
+                {asset.baseline_cycles}c · {asset.health?.coverage?.confidence ?? 'none'}
+              </Cell>
               <Cell className="numeric">{number(asset.cycles, 0)}</Cell>
               <Cell className="numeric">{asset.sensors.length}/21</Cell>
-              <Cell className="max-w-[280px] truncate text-faint">
+              <Cell className="max-w-[240px] truncate text-faint">
                 {Object.entries(asset.mapping)
                   .slice(0, 3)
                   .map(([source, target]) => `${source}→${target}`)
@@ -620,14 +660,24 @@ export function DataOnboarding() {
                 {Object.keys(asset.mapping).length > 3 && ' …'}
               </Cell>
               <Cell>
-                <button
-                  onClick={() => void handleScore(asset)}
-                  disabled={busy === asset.id || !asset.score_eligible}
-                  title={asset.score_eligible ? 'Run the gated RUL check' : 'Asset does not satisfy the model contract'}
-                  className="rounded-[6px] border border-[var(--color-line)] px-2 py-1 text-[10.5px] text-muted hover:text-fg disabled:opacity-30"
-                >
-                  {busy === asset.id ? 'Scoring…' : 'Score'}
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => void handleHealth(asset)}
+                    disabled={busy === asset.id}
+                    title="Recompute baseline-relative health from the mapped sensors"
+                    className="rounded-[6px] border border-[var(--color-line)] px-2 py-1 text-[10.5px] text-muted hover:text-fg disabled:opacity-30"
+                  >
+                    Health
+                  </button>
+                  <button
+                    onClick={() => void handleScore(asset)}
+                    disabled={busy === asset.id || !asset.score_eligible}
+                    title={asset.score_eligible ? 'Run the gated RUL check' : 'Asset does not satisfy the 21-sensor model contract'}
+                    className="rounded-[6px] border border-[var(--color-line)] px-2 py-1 text-[10.5px] text-muted hover:text-fg disabled:opacity-30"
+                  >
+                    {busy === asset.id ? '…' : 'RUL'}
+                  </button>
+                </div>
               </Cell>
             </Row>
           ))}
@@ -641,9 +691,11 @@ export function DataOnboarding() {
         </Table>
         {scoreMessage && <div className="border-t border-[var(--color-line)] px-3 py-2"><Note>{scoreMessage}</Note></div>}
         <div className="border-t border-[var(--color-line)] px-3 py-2 text-[10.5px] text-faint">
-          Scoring is gated: the asset must be validated, all 21 sensors must be mapped and at least
-          30 cycles recorded. The RUL model is trained on C-MAPSS, so a plant result is an
-          out-of-distribution check, not a validated prediction.
+          Health uses each asset's own early-cycle baseline and every mapped sensor, so partial
+          exports still produce a signal: 1 sensor with 10 cycles is the minimum, 3 sensors with
+          20 cycles is the recommended minimum, 6+ sensors give high confidence. RUL remains
+          opt-in and still requires all 21 sensors and 30 cycles; the model is trained on C-MAPSS,
+          so a plant RUL result is an out-of-distribution check, not a validated prediction.
         </div>
       </Panel>
     </div>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Activity, AlertTriangle, ArrowUpRight, Bell, Gauge, ShieldCheck, Wrench } from 'lucide-react'
 
 import { Badge, Label } from '../components/ui/Badge'
@@ -6,7 +7,8 @@ import { PageHeader, Note } from '../components/ui/PageHeader'
 import { Panel } from '../components/ui/Panel'
 import { Stat } from '../components/ui/Stat'
 import { Cell, Row, Table } from '../components/ui/Table'
-import type { HealthCategory } from '../data/types'
+import type { HealthCategory, PlantHealthOverview } from '../data/types'
+import { fetchPlantHealth } from '../lib/api'
 import { useData } from '../lib/data-context'
 import { money, number, percent, relativeTime } from '../lib/format'
 import { navigate } from '../lib/router'
@@ -25,6 +27,19 @@ export function FleetOverview() {
   const alerts = data.alerts.slice(0, 7)
   const model = data.models.find((entry) => entry.name === 'cmapss_rul')
   const classifier = data.models.find((entry) => entry.name === 'ai4i_failure_classifier')
+  const [plant, setPlant] = useState<PlantHealthOverview | null>(null)
+
+  useEffect(() => {
+    if (source !== 'live') {
+      setPlant(null)
+      return
+    }
+    let active = true
+    fetchPlantHealth()
+      .then((payload) => { if (active) setPlant(payload) })
+      .catch(() => { if (active) setPlant(null) })
+    return () => { active = false }
+  }, [source])
 
   return (
     <div className="space-y-4">
@@ -67,6 +82,59 @@ export function FleetOverview() {
           icon={<Bell className="size-4" />}
           hint={`${summary.deferred} assets deferred to monitoring`} />
       </div>
+
+      {plant && plant.summary.total > 0 && (
+        <Panel
+          title="Onboarded plant assets"
+          subtitle="Baseline-relative health from whatever sensors each export provides — separate from the C-MAPSS fleet"
+          action={
+            <div className="flex items-center gap-2">
+              <Badge tone="neutral" dot>{plant.summary.total} assets</Badge>
+              <Badge tone={plant.summary.with_signal > 0 ? 'attention' : 'neutral'}>
+                {plant.summary.with_signal} with signal
+              </Badge>
+            </div>
+          }
+          bodyClassName="p-0"
+        >
+          <Table head={['Asset', 'Sensors', 'Baseline', 'Health', 'Confidence', '']}>
+            {[...plant.assets]
+              .sort((a, b) => (a.health_score ?? 101) - (b.health_score ?? 101))
+              .slice(0, 6)
+              .map((asset) => (
+                <Row key={asset.id}>
+                  <Cell className="text-fg">{asset.name}</Cell>
+                  <Cell className="numeric text-muted">{asset.sensors}/21</Cell>
+                  <Cell className="numeric text-faint">{asset.baseline_cycles} cycles</Cell>
+                  <Cell>
+                    {asset.usable && asset.health_score != null ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Badge tone={(asset.health_status ?? 'attention') as HealthCategory}>
+                          {number(asset.health_score, 0)}
+                        </Badge>
+                        <span className="text-[10px] text-faint">{asset.health_status}</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-faint">no signal yet</span>
+                    )}
+                  </Cell>
+                  <Cell className="text-[10px] text-muted">{asset.confidence ?? '—'}</Cell>
+                  <Cell>
+                    <button
+                      onClick={() => navigate('/onboarding')}
+                      className="rounded-[6px] border border-[var(--color-line)] px-2 py-1 text-[10.5px] text-muted hover:text-fg"
+                    >
+                      Open
+                    </button>
+                  </Cell>
+                </Row>
+              ))}
+          </Table>
+          <div className="border-t border-[var(--color-line)] px-3 py-2 text-[10.5px] text-faint">
+            {plant.guidance}
+          </div>
+        </Panel>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
         <Panel

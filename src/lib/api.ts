@@ -5,6 +5,9 @@ import type {
   MappingProfile,
   OnboardingReport,
   OnboardingInspection,
+  BackendPlantAsset,
+  PlantHealth,
+  PlantHealthOverview,
   PlantAsset,
   ScenarioComparison,
   ScenarioSummary,
@@ -221,9 +224,19 @@ export async function deleteMappingProfile(id: number): Promise<void> {
   }
 }
 
-export async function fetchPlantAssets(): Promise<PlantAsset[]> {
-  const payload = await getJson<{ assets: PlantAsset[] }>('/onboarding/assets')
+export async function fetchPlantAssets(): Promise<BackendPlantAsset[]> {
+  const payload = await getJson<{ assets: BackendPlantAsset[] }>('/onboarding/assets')
   return payload.assets
+}
+
+export async function fetchPlantHealth(): Promise<PlantHealthOverview> {
+  return getJson<PlantHealthOverview>('/onboarding/health')
+}
+
+export async function recomputePlantHealth(
+  id: number,
+): Promise<{ found: boolean; asset: BackendPlantAsset; health: PlantHealth }> {
+  return postJson(`/onboarding/assets/${id}/health`, {})
 }
 
 export async function scorePlantAsset(id: number) {
