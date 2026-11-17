@@ -1,5 +1,5 @@
 import snapshotJson from '../generated/snapshot.json'
-import type { Snapshot } from '../data/types'
+import type { AlertInbox, AlertLifecycle, Snapshot } from '../data/types'
 
 export const SNAPSHOT = snapshotJson as unknown as Snapshot
 
@@ -82,6 +82,21 @@ export async function explainFailure(input: Record<string, number | string>) {
 
 export async function optimizeMaintenance(budget: number) {
   return postJson('/maintenance/optimize', { budget })
+}
+
+/** Who is recorded on lifecycle transitions until the platform has real identities. */
+export const ALERT_ACTOR = 'console-operator'
+
+export async function fetchAlerts(limit = 200): Promise<AlertInbox> {
+  return getJson<AlertInbox>(`/alerts?limit=${limit}`)
+}
+
+export async function acknowledgeAlert(id: number, note?: string): Promise<AlertLifecycle> {
+  return postJson<AlertLifecycle>(`/alerts/${id}/acknowledge`, { actor: ALERT_ACTOR, note })
+}
+
+export async function resolveAlert(id: number, note?: string): Promise<AlertLifecycle> {
+  return postJson<AlertLifecycle>(`/alerts/${id}/resolve`, { actor: ALERT_ACTOR, note })
 }
 
 async function postJson<T = Record<string, unknown>>(path: string, body: unknown): Promise<T> {

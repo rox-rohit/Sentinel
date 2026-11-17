@@ -1,17 +1,16 @@
-import { AlertTriangle, ScanLine } from 'lucide-react'
+import { ScanLine } from 'lucide-react'
 
+import { AlertInbox } from '../components/alerts/AlertInbox'
 import { BarsChart } from '../components/charts/Charts'
 import { Badge, Label } from '../components/ui/Badge'
 import { PageHeader, Note } from '../components/ui/PageHeader'
 import { Panel } from '../components/ui/Panel'
 import { Stat } from '../components/ui/Stat'
-import { Cell, Row, Table } from '../components/ui/Table'
 import { useData } from '../lib/data-context'
 import { number } from '../lib/format'
-import { navigate } from '../lib/router'
 
 export function AnomalyCentre() {
-  const { data } = useData()
+  const { data, source } = useData()
   const centre = data.anomalies
   const histogram = centre.score_histogram.counts.map((count, index) => ({
     score: ((centre.score_histogram.edges[index] + centre.score_histogram.edges[index + 1]) / 2).toFixed(1),
@@ -77,24 +76,7 @@ export function AnomalyCentre() {
         </Panel>
       </div>
 
-      <Panel title="Recent anomaly alerts" subtitle="Generated from the latest scored cycle per asset" bodyClassName="p-0">
-        <Table head={['Asset', 'Severity', 'Score', 'Cycle', 'Signal', 'Affected channels', '']}>
-          {centre.recent.map((alert, index) => (
-            <Row key={`${alert.asset_id}-${index}`} onClick={() => navigate(`/assets/${alert.asset_id}`)}>
-              <Cell className="text-fg">{alert.label}</Cell>
-              <Cell><Badge tone={alert.severity}>{alert.severity}</Badge></Cell>
-              <Cell className="numeric">{number(alert.score, 2)}</Cell>
-              <Cell className="numeric text-muted">{alert.cycle}</Cell>
-              <Cell className="max-w-[420px] truncate whitespace-normal text-muted">{alert.message}</Cell>
-              <Cell className="text-faint">{alert.sensors.join(' · ') || '—'}</Cell>
-              <Cell><AlertTriangle className="size-3.5 text-faint" /></Cell>
-            </Row>
-          ))}
-          {centre.recent.length === 0 && (
-            <Row><Cell className="text-muted">No high-severity anomaly alerts in this build.</Cell></Row>
-          )}
-        </Table>
-      </Panel>
+      <AlertInbox fallback={centre.recent} live={source === 'live'} />
 
       <Panel title="Severity calibration" subtitle="Percentile cuts of the healthy score distribution">
         <div className="grid gap-3 md:grid-cols-2">

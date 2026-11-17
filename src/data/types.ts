@@ -56,6 +56,28 @@ export interface Alert {
   sensors: string[]
 }
 
+export type AlertStatus = 'open' | 'acknowledged' | 'resolved'
+
+export interface AlertLifecycle extends Alert {
+  id: number
+  fingerprint: string
+  status: AlertStatus
+  acknowledged: boolean
+  acknowledged_at: string | null
+  acknowledged_by: string | null
+  resolved_at: string | null
+  resolved_by: string | null
+  note: string | null
+  created_at: string
+  updated_at: string | null
+}
+
+export interface AlertInbox {
+  alerts: AlertLifecycle[]
+  counts: { open: number; acknowledged: number; resolved: number; total: number }
+  statuses: AlertStatus[]
+}
+
 export interface Snapshot {
   meta: {
     product: string
