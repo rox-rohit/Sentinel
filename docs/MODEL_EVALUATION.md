@@ -99,9 +99,9 @@ failure flag).
 
 ## 3. Anomaly detection
 
-Fitted on 3,100 early-life rows (cycles 30–60) of training units; 13,096 test
-cycles scored. Ensemble = mean of p99-normalised IsolationForest, LOF and PCA
-reconstruction error. Severity thresholds are healthy-distribution percentiles
+Fitted on 3,100 early-life rows (cycles 30–60) of training units; the current
+build scores 10,196 rows across the fleet. Ensemble = mean of p99-normalised
+IsolationForest, LOF and PCA reconstruction error. Severity thresholds are healthy-distribution percentiles
 (p90 = 0.844, p97 = 0.900, p99.5 = 0.994, p99.9 = 1.074).
 
 Distribution over the fleet's current cycle: 75 normal, 7 low, 10 medium,

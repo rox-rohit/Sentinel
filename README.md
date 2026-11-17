@@ -8,7 +8,7 @@ validated data, predictions, explanations and budget-constrained maintenance
 decisions. It is built as a real system — a Python data/ML backend, a FastAPI
 service and a React operations console — on two public research datasets.
 
-![status](https://img.shields.io/badge/tests-30%20passing-2dd4a7)
+![status](https://img.shields.io/badge/tests-49%20passing-2dd4a7)
 ![python](https://img.shields.io/badge/python-3.11%2B-35d6f2)
 ![node](https://img.shields.io/badge/node-20%2B-35d6f2)
 
@@ -218,9 +218,12 @@ artifacts/           models, metrics, registry DB, snapshot (generated, git-igno
 
 ## Roadmap
 
-Phases 0–5, the replay part of 6 and forecasting are implemented and verified.
-Next: alert lifecycle, MLflow, deep-learning lab, then the portfolio release pack. See
-`DEVELOPMENT_ROADMAP.md` and `TASKS.md`.
+Phases 0–5, Phase 7 and the replay part of Phase 6 are implemented and verified.
+The Phase 8 portfolio pack is in progress: see
+[`docs/TECHNICAL_REPORT.md`](docs/TECHNICAL_REPORT.md) for the full technical
+report and [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) for the demo narrative
+and three-minute walkthrough. Next: MLflow/retraining and the deep-learning lab.
+See `DEVELOPMENT_ROADMAP.md` and `TASKS.md`.
 
 ## Attribution
 

@@ -97,10 +97,13 @@ Deliverables: `PROJECT_VISION.md`, `SYSTEM_ARCHITECTURE.md`,
 Verification for every page: it reads only fields that exist in the snapshot /
 API contract; the UI labels live vs artifact-snapshot mode in the top bar.
 
-## Phase 8 — Portfolio release ⬜
+## Phase 8 — Portfolio release 🟡
 
-- Architecture diagram, screenshots, demo dataset narrative, technical report,
-  model comparison report, setup documentation, demo video script.
+- ✅ Technical report covering architecture, modelling decisions, negative
+  results, evaluation evidence and limitations (`docs/TECHNICAL_REPORT.md`).
+- ✅ Demo narrative plus timed three-minute walkthrough (`docs/DEMO_SCRIPT.md`).
+- ✅ Screenshots of seven pages captured from the live console.
+- ⬜ Architecture diagram asset, recorded demo video, setup walkthrough GIF.
 
 ## Next recommended task
 

@@ -120,11 +120,19 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
 - [ ] Drift report surfaced on the Model Lab page (API exists).
 
 
+### Phase 8 — Portfolio release
+- [x] Technical report (`docs/TECHNICAL_REPORT.md`): architecture, modelling
+      decisions with negative results, evaluation evidence, limitations,
+      reproducibility and future work.
+- [x] Demo narrative and timed three-minute walkthrough
+      (`docs/DEMO_SCRIPT.md`), including snapshot-mode fallback and expected Q&A.
+- [ ] Architecture diagram asset (SVG/PNG) for the README.
+- [ ] Recorded demo video from the script.
+
 ## ⬜ Pending — next tasks, in order
 1. **Phase 4** — deep learning lab once disk/CUDA allow (DECISIONS D-008):
    sequence tensors, LSTM/GRU/1D-CNN/Transformer, early stopping, checkpoints.
 2. **Phase 6** — MLflow tracking + retraining workflow with promotion policy.
-3. **Phase 8** — architecture diagram, technical report, video script.
 
 ## Known limitations
 - Local metadata store is SQLite (`SENTINEL_DATABASE_URL` switches to PostgreSQL).
