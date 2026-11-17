@@ -1,6 +1,6 @@
 # SENTINEL — Task Board
 
-Updated: 2026-11-15 (Phase 0–3, 5 foundation; Phase 6 replay streaming)
+Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
 
 ## ✅ Completed and verified
 
@@ -73,10 +73,27 @@ Updated: 2026-11-15 (Phase 0–3, 5 foundation; Phase 6 replay streaming)
       API is offline (RUL bands and severity marked unavailable there).
 - [x] NaN/Infinity normalised to null so browsers can parse every frame.
 
+### Phase 7 — Alert lifecycle
+- [x] Deterministic alert fingerprint (asset + kind + cycle): a rebuild refreshes
+      severity/message/score but keeps acknowledgement and resolution state.
+- [x] Store migration adds `fingerprint`, `status`, actor/timestamp and note
+      columns to existing SQLite databases; no manual reset needed.
+- [x] `sync_alerts` inserts new alerts, updates existing ones and deletes only
+      still-open alerts that the pipeline no longer produces; acknowledged and
+      resolved alerts remain as an audit trail.
+- [x] `GET /alerts?status=&asset_id=&limit=` returns records plus counts per
+      status; `GET /alerts/{id}` returns a single alert.
+- [x] `POST /alerts/{id}/acknowledge` and `POST /alerts/{id}/resolve` record the
+      actor, timestamp and optional note; resolving twice or acknowledging a
+      resolved alert returns 409, unknown ids 404.
+- [x] Anomaly Centre "Alert inbox" with status filters, counts and Ack/Resolve
+      controls; falls back to the read-only snapshot list when the API is down.
+
 ### Verification
-- [x] `python -m pytest -q` — 36 passed (data, validation, features, metrics,
+- [x] `python -m pytest -q` — 43 passed (data, validation, features, metrics,
       decisions, API integration, RUL sequence inference, replay cursor and
-      WebSocket protocol, strict-JSON frame safety, chronological forecasting).
+      WebSocket protocol, strict-JSON frame safety, chronological forecasting,
+      alert identity/persistence/transitions).
 - [x] `bun run typecheck` — clean.
 - [x] `bun run build` — Vite + Worker build, dist/sentinel/index.js produced.
 - [x] `bun test tests` — worker health/404 behaviour.
@@ -84,12 +101,12 @@ Updated: 2026-11-15 (Phase 0–3, 5 foundation; Phase 6 replay streaming)
 ## 🟡 In progress / partial
 - [ ] Model registry promotion workflow in the UI (metadata + status exist).
 - [ ] Drift report surfaced on the Model Lab page (API exists).
-- [ ] Alert lifecycle (generated + listed; no acknowledgement endpoint yet).
+
 
 ## ⬜ Pending — next tasks, in order
 1. **Phase 4** — deep learning lab once disk/CUDA allow (DECISIONS D-008):
    sequence tensors, LSTM/GRU/1D-CNN/Transformer, early stopping, checkpoints.
-2. **Phase 7** — alert acknowledgement workflow and saved scenario comparison.
+2. **Phase 7** — saved scenario comparison for maintenance optimisation.
 3. **Phase 6** — MLflow tracking + retraining workflow with promotion policy.
 4. **Phase 8** — architecture diagram, technical report, video script.
 

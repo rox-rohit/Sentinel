@@ -37,7 +37,10 @@ All errors use one envelope:
 | GET | `/fleet/summary` | KPIs, health distribution, risk bands, weights |
 | GET | `/fleet/assets?status=&sort=` | Asset list (`sort=health\|risk\|rul\|id`) |
 | GET | `/fleet/assets/{asset_id}` | Full asset, including telemetry series |
-| GET | `/alerts?limit=` | Generated alerts from the metadata store |
+| GET | `/alerts?limit=&status=&asset_id=` | Alert inbox with lifecycle status and counts |
+| GET | `/alerts/{id}` | Single alert with acknowledgement/resolution audit fields |
+| POST | `/alerts/{id}/acknowledge` | Acknowledge an alert (`actor`, optional `note`); 409 if resolved |
+| POST | `/alerts/{id}/resolve` | Resolve an alert (`actor`, optional `note`); 409 if already resolved |
 
 ## Prediction
 

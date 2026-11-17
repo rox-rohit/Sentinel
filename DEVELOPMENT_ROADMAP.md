@@ -84,8 +84,12 @@ Deliverables: `PROJECT_VISION.md`, `SYSTEM_ARCHITECTURE.md`,
 - ✅ Fleet Overview, Live Monitoring, Machine Intelligence, Digital Twin detail, Predictive
   Analytics, Anomaly Centre, RUL Intelligence, Explainability, Maintenance
   Optimiser, Model Laboratory, Dataset Management, Historical Analytics, Settings.
-- ✅ Forecasting page (sensor × horizon MASE table, example forecast);
-  ⬜ alert acknowledgement workflow, saved scenario comparison.
+- ✅ Forecasting page (sensor × horizon MASE table, example forecast).
+- ✅ Alert lifecycle: stable fingerprints, acknowledgement/resolution stored in
+  the metadata database with actor, timestamp and note, and an Alert inbox with
+  status filters and Ack/Resolve controls on the Anomaly Centre. State survives
+  rebuilds; only still-open alerts the pipeline no longer generates are pruned.
+- ⬜ Saved maintenance scenario comparison.
 
 Verification for every page: it reads only fields that exist in the snapshot /
 API contract; the UI labels live vs artifact-snapshot mode in the top bar.
@@ -97,5 +101,5 @@ API contract; the UI labels live vs artifact-snapshot mode in the top bar.
 
 ## Next recommended task
 
-Phase 7's alert lifecycle and saved scenario comparison, then MLflow tracking.
+Phase 7's saved scenario comparison, then MLflow tracking.
 See `TASKS.md` for the granular list.
