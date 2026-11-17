@@ -140,8 +140,23 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
       alerts that C-MAPSS synchronisation cannot prune.
 - [x] Full 21-sensor RUL remains an explicit opt-in behind the existing gate.
 
+### Hosted deployment (Azure for Students)
+- [x] FastAPI on Azure App Service (Linux, B1, Python 3.15) with hosted
+      PostgreSQL Flexible Server; `SENTINEL_DATABASE_URL` routes SQLAlchemy
+      through psycopg 3.
+- [x] Idempotent startup seed copies the packaged SQLite registry into Postgres
+      (2 datasets, 14 model versions, 34 alerts); no model binaries committed.
+- [x] React console on Azure Static Web Apps, built with
+      `VITE_API_BASE_URL` pointing at the hosted API and the SPA fallback config.
+- [x] CORS restricted to the Static Web App origin; live and snapshot modes both
+      verified in the deployed console.
+- [x] Store schema initialized once per process instead of on every database
+      call; warm `/alerts` dropped from ~5.6 s to ~0.75 s.
+- [x] Deployment procedure, hosts and environment variables recorded in
+      `docs/DEPLOYMENT.md`.
+
 ### Verification
-- [x] `python -m pytest -q` — 73 passed (data, validation, features, metrics,
+- [x] `python -m pytest -q` — 74 passed (data, validation, features, metrics,
       decisions, API integration, RUL sequence inference, replay cursor and
       WebSocket protocol, strict-JSON frame safety, chronological forecasting,
       alert identity/persistence/transitions, scenario persistence/comparison,
@@ -173,7 +188,8 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
 3. **Phase 6** — MLflow tracking + retraining workflow with promotion policy.
 
 ## Known limitations
-- Local metadata store is SQLite (`SENTINEL_DATABASE_URL` switches to PostgreSQL).
+- Local metadata store defaults to SQLite; the hosted deployment uses PostgreSQL
+  via `SENTINEL_DATABASE_URL`.
 - Deep learning and MLflow are not installed (disk / Python 3.15 wheel limits).
 - IMS Bearing dataset not integrated (not downloaded; needs signal-processing path).
 - Snapshot fallback is static: no live inference when the API is unreachable.

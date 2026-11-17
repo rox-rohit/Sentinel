@@ -117,6 +117,9 @@ API contract; the UI labels live vs artifact-snapshot mode in the top bar.
   results, evaluation evidence and limitations (`docs/TECHNICAL_REPORT.md`).
 - ✅ Demo narrative plus timed three-minute walkthrough (`docs/DEMO_SCRIPT.md`).
 - ✅ Screenshots of seven pages captured from the live console.
+- ✅ Public Azure deployment: FastAPI + PostgreSQL on App Service, React console
+  on Static Web Apps, live API and snapshot fallback verified
+  (`docs/DEPLOYMENT.md`).
 - ⬜ Architecture diagram asset, recorded demo video, setup walkthrough GIF.
 
 ## Next recommended task

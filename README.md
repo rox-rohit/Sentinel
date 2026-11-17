@@ -8,9 +8,15 @@ validated data, predictions, explanations and budget-constrained maintenance
 decisions. It is built as a real system — a Python data/ML backend, a FastAPI
 service and a React operations console — on two public research datasets.
 
-![status](https://img.shields.io/badge/tests-73%20passing-2dd4a7)
+![status](https://img.shields.io/badge/tests-74%20passing-2dd4a7)
 ![python](https://img.shields.io/badge/python-3.11%2B-35d6f2)
 ![node](https://img.shields.io/badge/node-20%2B-35d6f2)
+
+**Live deployment:** [console](https://victorious-sky-062450900.3.azurestaticapps.net) ·
+[API](https://sentinel-api-l1fit9.azurewebsites.net/api/v1/health) ·
+[API docs](https://sentinel-api-l1fit9.azurewebsites.net/docs). The API uses hosted
+PostgreSQL; the console falls back to its packaged snapshot if the API is down.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## What it does
 

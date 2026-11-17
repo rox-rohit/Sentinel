@@ -16,6 +16,7 @@ from sentinel.api.routes import ROUTERS
 from sentinel.config import settings
 from sentinel.inference.service import ArtifactUnavailable
 from sentinel.logging_setup import get_logger
+from sentinel.store.db import init_db
 
 log = get_logger("api")
 
@@ -34,8 +35,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.cors_origins),
-    # Development servers may pick another loopback port when 5173 is busy.
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    # Development servers may pick another loopback port when 5173 is busy;
+    # hosted deployments add their exact origin via SENTINEL_CORS_ORIGINS.
+    allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=False,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "X-API-Key"],
@@ -78,6 +80,12 @@ async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:
 
 for router in ROUTERS:
     app.include_router(router, prefix=settings.api_prefix)
+
+
+@app.on_event("startup")
+def init_store() -> None:
+    """Prepare the operational store before the first request is served."""
+    init_db()
 
 
 @app.get("/", include_in_schema=False)

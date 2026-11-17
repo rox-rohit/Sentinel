@@ -28,7 +28,7 @@ export interface DatasetState {
   error: string | null
 }
 
-async function getJson<T>(path: string, timeoutMs = 4000): Promise<T> {
+async function getJson<T>(path: string, timeoutMs = 12000): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {

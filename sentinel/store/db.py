@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -142,7 +143,14 @@ class MaintenanceScenarioRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
-engine = create_engine(settings.database_url, future=True, pool_pre_ping=True)
+engine = create_engine(
+    settings.database_url,
+    future=True,
+    # Hosted Postgres is remote from the app; a pre-ping adds a second round-trip
+    # to every checkout. Recycle instead of probing on each request.
+    pool_pre_ping=False,
+    pool_recycle=300,
+)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, future=True)
 
 
@@ -214,11 +222,28 @@ def _migrate_plant_assets() -> None:
                 connection.execute(text(f"ALTER TABLE plant_assets ADD COLUMN {name} {ddl}"))
 
 
+_init_lock = threading.Lock()
+_initialized_url: str | None = None
+
+
 def init_db() -> None:
-    settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
-    Base.metadata.create_all(engine)
-    _migrate_alerts()
-    _migrate_plant_assets()
+    """Create tables and run migrations once per database URL.
+
+    This used to run on every ``session_scope`` call; against a hosted Postgres
+    that added several schema round-trips to every request. The API also calls
+    it at startup so the first request does not pay the cost.
+    """
+    global _initialized_url
+    if _initialized_url == settings.database_url:
+        return
+    with _init_lock:
+        if _initialized_url == settings.database_url:
+            return
+        settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        Base.metadata.create_all(engine)
+        _migrate_alerts()
+        _migrate_plant_assets()
+        _initialized_url = settings.database_url
 
 
 @contextmanager

@@ -27,6 +27,7 @@ holds the detailed technical documents.
 | [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | Tokens, components, chart and layout rules |
 | [`SYSTEM_ARCHITECTURE.md`](SYSTEM_ARCHITECTURE.md) | Pointer to the canonical root architecture |
 | [`DEVELOPMENT_ROADMAP.md`](DEVELOPMENT_ROADMAP.md) | Pointer to the canonical root roadmap |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md) | Azure hosts, environment variables, update procedure and deployment checks |
 
 ## Reproduce
 

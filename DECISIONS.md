@@ -335,3 +335,31 @@ the RUL sensor gate (out-of-distribution model contract).
 from the first usable export. The health number is relative to the asset's own
 baseline and is not a remaining-life estimate; a baseline captured during a fault
 normalises that fault, and plant alerts persist until an operator resolves them.
+
+## D-018 — Host on App Service + Static Web Apps + PostgreSQL Flexible Server
+
+**Context.** The platform needed public hosts on an Azure for Students
+subscription. The console is a static Vite build; the API is Python with
+scientific wheels; Container Registry Tasks are blocked for this subscription,
+so a Docker/ACR path could not build images in Azure.
+
+**Decision.** Run FastAPI directly on App Service Linux (Python 3.15, B1),
+serve the console from Static Web Apps Free, and use PostgreSQL Flexible Server
+(B1ms) for the operational store. Deploy the API as an Oryx zip build and start
+it with `startup.sh`; build the console locally with
+`VITE_API_BASE_URL=https://sentinel-api-l1fit9.azurewebsites.net/api/v1`.
+CORS allows only the Static Web App origin (plus loopback development origins).
+The SQLite registry is copied into Postgres idempotently at startup.
+
+**Alternatives rejected.** Docker + ACR (Tasks not permitted on the student
+subscription); Render/Neon (the user chose Azure); App Service with a managed
+Python build only (the extracted Oryx output references a temporary virtualenv
+path, so startup uses the runtime interpreter with the extracted site-packages);
+bundling the frontend into the API container (unnecessary and slower).
+
+**Consequences.** The API is a single B1 instance with one uvicorn worker, so a
+cold start and the first database connection take several seconds; the client
+allows 12 s. The schema is initialized once at startup rather than per request.
+Deleting `output.tar.zst` while `oryx-manifest.toml` still says the output is
+compressed breaks every restart; the manifest must be removed after manual
+extraction. Hosts and settings are recorded in `docs/DEPLOYMENT.md`.

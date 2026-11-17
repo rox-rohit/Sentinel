@@ -33,6 +33,30 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _database_url() -> str:
+    """Accept hosted Postgres URLs and route them through psycopg 3."""
+    raw = os.environ.get(
+        "SENTINEL_DATABASE_URL", f"sqlite:///{(ARTIFACTS / 'sentinel.db').as_posix()}"
+    )
+    if raw.startswith("postgres://"):
+        return "postgresql+psycopg://" + raw[len("postgres://"):]
+    if raw.startswith("postgresql://"):
+        return "postgresql+psycopg://" + raw[len("postgresql://"):]
+    return raw
+
+
+def _cors_origins() -> tuple[str, ...]:
+    defaults = (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+    )
+    extra = os.environ.get("SENTINEL_CORS_ORIGINS", "")
+    return tuple(dict.fromkeys(
+        [*defaults, *(origin.strip() for origin in extra.split(",") if origin.strip())]
+    ))
+
+
 @dataclass(frozen=True)
 class CostModel:
     """Explicit business assumptions.
@@ -68,11 +92,7 @@ class HealthWeights:
 @dataclass(frozen=True)
 class Settings:
     # --- storage -----------------------------------------------------------
-    database_url: str = field(
-        default_factory=lambda: os.environ.get(
-            "SENTINEL_DATABASE_URL", f"sqlite:///{(ARTIFACTS / 'sentinel.db').as_posix()}"
-        )
-    )
+    database_url: str = field(default_factory=_database_url)
     model_dir: Path = MODEL_DIR
     meta_dir: Path = META_DIR
     artifacts_dir: Path = ARTIFACTS
@@ -107,12 +127,13 @@ class Settings:
 
     # --- api ---------------------------------------------------------------
     api_prefix: str = "/api/v1"
-    cors_origins: tuple[str, ...] = (
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",
+    cors_origins: tuple[str, ...] = field(default_factory=_cors_origins)
+    # Hosted frontends can be added without rebuilding by setting this regex.
+    cors_origin_regex: str = os.environ.get(
+        "SENTINEL_CORS_ORIGIN_REGEX", r"http://(localhost|127\.0\.0\.1):\d+"
     )
     api_key: str | None = os.environ.get("SENTINEL_API_KEY") or None
+    seed_db: str | None = os.environ.get("SENTINEL_SEED_DB") or None
 
     def ensure_dirs(self) -> None:
         for path in (DATA_PROCESSED, ARTIFACTS, MODEL_DIR, META_DIR, GENERATED):
