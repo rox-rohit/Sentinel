@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, FileUp, PlugZap, ShieldCheck, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, FileUp, PlugZap, Save, ShieldCheck, Trash2, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { Badge } from '../components/ui/Badge'
@@ -6,15 +6,25 @@ import { Note, PageHeader } from '../components/ui/PageHeader'
 import { Panel } from '../components/ui/Panel'
 import { Cell, Row, Table } from '../components/ui/Table'
 import {
+  applyMappingProfile,
+  deleteMappingProfile,
+  fetchMappingProfiles,
   fetchPlantAssets,
   importPlantCsv,
   inspectPlantCsv,
+  saveMappingProfile,
   scorePlantAsset,
   validatePlantCsv,
 } from '../lib/api'
 import { useData } from '../lib/data-context'
 import { number } from '../lib/format'
-import type { OnboardingInspection, OnboardingReport, PlantAsset } from '../data/types'
+import type {
+  MappingProfile,
+  OnboardingInspection,
+  OnboardingReport,
+  PlantAsset,
+  SchemaDrift,
+} from '../data/types'
 
 const REQUIRED = ['asset_id', 'cycle']
 const TARGETS = [
@@ -36,7 +46,12 @@ export function DataOnboarding() {
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [report, setReport] = useState<OnboardingReport | null>(null)
   const [registry, setRegistry] = useState<PlantAsset[]>([])
-  const [busy, setBusy] = useState<'inspect' | 'validate' | 'import' | number | null>(null)
+  const [profiles, setProfiles] = useState<MappingProfile[]>([])
+  const [profileName, setProfileName] = useState('')
+  const [selectedProfile, setSelectedProfile] = useState<MappingProfile | null>(null)
+  const [drift, setDrift] = useState<SchemaDrift | null>(null)
+  const [acceptDrift, setAcceptDrift] = useState(false)
+  const [busy, setBusy] = useState<'inspect' | 'validate' | 'import' | 'profile' | number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [scoreMessage, setScoreMessage] = useState<string | null>(null)
@@ -50,15 +65,27 @@ export function DataOnboarding() {
     }
   }, [live])
 
+  const refreshProfiles = useCallback(async () => {
+    if (!live) return
+    try {
+      setProfiles(await fetchMappingProfiles())
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Profiles unreachable')
+    }
+  }, [live])
+
   useEffect(() => {
     void refreshRegistry()
-  }, [refreshRegistry])
+    void refreshProfiles()
+  }, [refreshRegistry, refreshProfiles])
 
   async function handleInspect() {
     setBusy('inspect')
     setError(null)
     setNotice(null)
     setReport(null)
+    setDrift(null)
+    setAcceptDrift(false)
     try {
       const next = await inspectPlantCsv(csvText, filename)
       setInspection(next)
@@ -77,7 +104,10 @@ export function DataOnboarding() {
     setError(null)
     setNotice(null)
     try {
-      setReport(await validatePlantCsv(csvText, mapping, filename))
+      const next = await validatePlantCsv(csvText, mapping, filename, selectedProfile?.id)
+      setReport(next)
+      setDrift(next.drift ?? null)
+      setAcceptDrift(false)
     } catch (cause) {
       setReport(null)
       setError(cause instanceof Error ? cause.message : 'Validation failed')
@@ -95,8 +125,13 @@ export function DataOnboarding() {
     setError(null)
     setNotice(null)
     try {
-      const result = await importPlantCsv(assetName.trim(), csvText, mapping, filename)
+      const result = await importPlantCsv(
+        assetName.trim(), csvText, mapping, filename,
+        selectedProfile?.id, acceptDrift,
+      )
       setReport(result.report)
+      setDrift(result.report.drift ?? drift)
+      await refreshProfiles()
       setNotice(
         `Registered ${result.assets.length} asset(s): ${result.assets
           .map((asset) => `${asset.asset_id} (${asset.status})`)
@@ -128,8 +163,77 @@ export function DataOnboarding() {
     }
   }
 
+  async function handleSaveProfile() {
+    if (!inspection) return
+    if (!profileName.trim()) {
+      setError('Give the mapping profile a name.')
+      return
+    }
+    setBusy('profile')
+    setError(null)
+    try {
+      const created = await saveMappingProfile(
+        profileName.trim(), filename, mapping, inspection.columns.map((column) => column.source),
+      )
+      setProfileName('')
+      setSelectedProfile(created)
+      await refreshProfiles()
+      setNotice(`Saved profile “${created.name}” for ${created.expected_columns.length} columns.`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save the profile')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleApplyProfile(profile: MappingProfile) {
+    if (!csvText.trim()) {
+      setError('Load or paste a CSV before applying a profile.')
+      return
+    }
+    setBusy(profile.id)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await applyMappingProfile(profile.id, csvText)
+      setSelectedProfile(profile)
+      setMapping(result.mapping)
+      setDrift(result.drift)
+      setReport(null)
+      setAcceptDrift(false)
+      setNotice(
+        result.drift.status === 'unchanged'
+          ? `Profile “${profile.name}” matches this export exactly.`
+          : `Profile “${profile.name}” applied with schema drift — review it below.`,
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not apply the profile')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleDeleteProfile(profile: MappingProfile) {
+    setBusy(profile.id)
+    setError(null)
+    try {
+      await deleteMappingProfile(profile.id)
+      if (selectedProfile?.id === profile.id) {
+        setSelectedProfile(null)
+        setDrift(null)
+      }
+      await refreshProfiles()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not delete the profile')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   function updateMapping(sourceColumn: string, target: string) {
     setReport(null)
+    setSelectedProfile(null)
+    setDrift(null)
     setMapping((current) => {
       const next = { ...current }
       if (!target) delete next[sourceColumn]
@@ -229,6 +333,124 @@ export function DataOnboarding() {
           </div>
         </Panel>
       </div>
+
+      <Panel
+        title="Mapping profiles"
+        subtitle="Save a vendor/source mapping and reuse it on the next export"
+        action={<Badge tone="neutral">{profiles.length} saved</Badge>}
+        bodyClassName="p-0"
+      >
+        {!live ? (
+          <div className="px-4 py-3">
+            <Note tone="warn">Profiles live in the metadata database and need the API.</Note>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-line)] px-3 py-2.5">
+              <input
+                value={profileName}
+                onChange={(event) => setProfileName(event.target.value)}
+                placeholder="Profile name (e.g. Vendor A monthly export)"
+                className="min-w-[220px] flex-1 rounded-[7px] border border-[var(--color-line)] bg-white/[0.02] px-3 py-1.5 text-[11.5px] outline-none"
+              />
+              <button
+                onClick={() => void handleSaveProfile()}
+                disabled={!inspection || busy === 'profile'}
+                title={inspection ? 'Save the current mapping' : 'Inspect a CSV first'}
+                className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--color-line)] px-3 py-1.5 text-[11px] text-muted hover:text-fg disabled:opacity-40"
+              >
+                <Save className="size-3.5" />
+                {busy === 'profile' ? 'Saving…' : 'Save current mapping'}
+              </button>
+            </div>
+            <Table head={['Profile', 'Source', 'Columns', 'Used', 'Status', '']}>
+              {profiles.map((profile) => (
+                <Row key={profile.id}>
+                  <Cell className="text-fg">{profile.name}</Cell>
+                  <Cell className="max-w-[220px] truncate text-muted">{profile.source || '—'}</Cell>
+                  <Cell className="numeric text-muted">
+                    {profile.expected_columns.length}
+                  </Cell>
+                  <Cell className="numeric text-faint">{profile.use_count}</Cell>
+                  <Cell>
+                    {selectedProfile?.id === profile.id
+                      ? <Badge tone="attention">selected</Badge>
+                      : <span className="text-[10px] text-faint">—</span>}
+                  </Cell>
+                  <Cell>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => void handleApplyProfile(profile)}
+                        disabled={!csvText.trim() || busy === profile.id}
+                        className="rounded-[6px] border border-[var(--color-line)] px-2 py-1 text-[10.5px] text-muted hover:text-fg disabled:opacity-30"
+                      >
+                        {busy === profile.id ? 'Applying…' : 'Apply'}
+                      </button>
+                      <button
+                        onClick={() => void handleDeleteProfile(profile)}
+                        disabled={busy === profile.id}
+                        title="Delete profile"
+                        className="rounded-[6px] border border-[var(--color-line)] p-1.5 text-faint hover:text-[var(--color-bad)] disabled:opacity-30"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    </div>
+                  </Cell>
+                </Row>
+              ))}
+              {profiles.length === 0 && (
+                <Row><Cell className="text-muted">No profiles yet. Inspect a CSV, map it, then save the mapping here.</Cell></Row>
+              )}
+            </Table>
+          </>
+        )}
+      </Panel>
+
+      {drift && drift.status === 'drift' && (
+        <Panel
+          title="Schema drift detected"
+          subtitle={drift.profile_name ? `Compared with “${drift.profile_name}”` : 'Compared with the saved profile'}
+          action={<Badge tone={drift.blocking ? 'critical' : 'medium'}>{drift.blocking ? 'needs acknowledgement' : 'reported'}</Badge>}
+        >
+          <div className="space-y-2 text-[10.5px] leading-relaxed">
+            {drift.renamed.map((rename) => (
+              <div key={`${rename.from}-${rename.to}`} className="flex flex-wrap items-center gap-2">
+                <Badge tone="attention">renamed</Badge>
+                <span className="text-muted">{rename.from}</span>
+                <span className="text-faint">→</span>
+                <span className="text-fg">{rename.to}</span>
+                <span className="text-faint">mapping carried to {rename.target ?? '—'} ({Math.round(rename.confidence * 100)}%)</span>
+              </div>
+            ))}
+            {drift.added.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="neutral">added</Badge>
+                <span className="text-muted">{drift.added.join(', ')}</span>
+                <span className="text-faint">left unmapped unless you assign them</span>
+              </div>
+            )}
+            {drift.missing.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="critical">missing</Badge>
+                <span className="text-muted">{drift.missing.join(', ')}</span>
+                <span className="text-faint">dropped fields: {drift.dropped_targets.join(', ') || '—'}</span>
+              </div>
+            )}
+            {drift.reason && <p className="text-muted">{drift.reason}</p>}
+            {drift.blocking && (
+              <label className="mt-1 flex cursor-pointer items-center gap-2 text-[11px] text-muted">
+                <input
+                  type="checkbox"
+                  checked={acceptDrift}
+                  onChange={(event) => setAcceptDrift(event.target.checked)}
+                  className="size-3.5 accent-[var(--color-accent)]"
+                />
+                Accept this schema drift for the import and refresh the profile to the new columns
+              </label>
+            )}
+          </div>
+        </Panel>
+      )}
 
       {inspection && (
         <Panel
@@ -360,7 +582,7 @@ export function DataOnboarding() {
           <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-line)] px-3 py-2.5">
             <button
               onClick={() => void handleImport()}
-              disabled={busy === 'import' || report.readiness === 'blocked'}
+              disabled={busy === 'import' || report.readiness === 'blocked' || Boolean(drift?.blocking && !acceptDrift)}
               className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--color-good)]/40 bg-[rgb(45_212_167_/_0.1)] px-3 py-1.5 text-[11px] text-[var(--color-good)] disabled:opacity-40"
             >
               <PlugZap className="size-3.5" />

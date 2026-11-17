@@ -2,6 +2,7 @@ import snapshotJson from '../generated/snapshot.json'
 import type {
   AlertInbox,
   AlertLifecycle,
+  MappingProfile,
   OnboardingReport,
   OnboardingInspection,
   PlantAsset,
@@ -144,8 +145,14 @@ export async function validatePlantCsv(
   csv_text: string,
   mapping: Record<string, string>,
   source_file = 'upload.csv',
+  profile_id?: number,
 ): Promise<OnboardingReport> {
-  return postJson<OnboardingReport>('/onboarding/validate', { csv_text, mapping, source_file })
+  return postJson<OnboardingReport>('/onboarding/validate', {
+    csv_text,
+    mapping,
+    source_file,
+    profile_id: profile_id ?? null,
+  })
 }
 
 export async function importPlantCsv(
@@ -153,13 +160,65 @@ export async function importPlantCsv(
   csv_text: string,
   mapping: Record<string, string>,
   source_file = 'upload.csv',
+  profile_id?: number,
+  accept_drift = false,
 ) {
   return postJson<{ report: OnboardingReport; assets: PlantAsset[] }>('/onboarding/import', {
     name,
     csv_text,
     mapping,
     source_file,
+    profile_id: profile_id ?? null,
+    accept_drift,
   })
+}
+
+export async function fetchMappingProfiles(): Promise<MappingProfile[]> {
+  const payload = await getJson<{ profiles: MappingProfile[] }>('/onboarding/profiles')
+  return payload.profiles
+}
+
+export async function saveMappingProfile(
+  name: string,
+  source: string,
+  mapping: Record<string, string>,
+  expected_columns: string[],
+  notes?: string,
+): Promise<MappingProfile> {
+  return postJson<MappingProfile>('/onboarding/profiles', {
+    name,
+    source,
+    mapping,
+    expected_columns,
+    notes,
+  })
+}
+
+export async function applyMappingProfile(
+  id: number,
+  csvText: string,
+): Promise<{ profile_id: number; mapping: Record<string, string>; drift: import('../data/types').SchemaDrift }> {
+  const response = await fetch(`${API_BASE}/onboarding/profiles/${id}/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/csv' },
+    body: csvText,
+  })
+  const payload = await response.json() as {
+    error?: { message?: string }
+    profile_id: number
+    mapping: Record<string, string>
+    drift: import('../data/types').SchemaDrift
+  }
+  if (!response.ok) throw new Error(payload.error?.message ?? `Request failed (${response.status})`)
+  return payload
+}
+
+export async function deleteMappingProfile(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/onboarding/profiles/${id}`, { method: 'DELETE' })
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new Error(payload.error?.message ?? `Request failed (${response.status})`)
+  }
 }
 
 export async function fetchPlantAssets(): Promise<PlantAsset[]> {

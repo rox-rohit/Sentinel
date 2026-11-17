@@ -176,6 +176,38 @@ export interface OnboardingReport {
   source_file: string
   preview: Record<string, string | number | null>[]
   notes: string[]
+  drift?: SchemaDrift | null
+}
+
+export interface SchemaDrift {
+  profile_id: number | null
+  profile_name?: string
+  status: 'unchanged' | 'drift'
+  changed: boolean
+  blocking: boolean
+  expected_columns: string[]
+  current_columns: string[]
+  added: string[]
+  missing: string[]
+  renamed: { from: string; to: string; confidence: number; target: string | null }[]
+  suggestions: { source: string; target: string | null; confidence: number }[]
+  dropped_targets: string[]
+  mapping: Record<string, string>
+  requires_acknowledgement: boolean
+  reason: string | null
+}
+
+export interface MappingProfile {
+  id: number
+  name: string
+  source: string
+  mapping: Record<string, string>
+  expected_columns: string[]
+  notes: string | null
+  use_count: number
+  created_at: string
+  updated_at: string | null
+  last_used_at: string | null
 }
 
 export interface PlantAsset {
