@@ -105,6 +105,40 @@ NASA C-MAPSS FD001 simulated engines. A plant result is an out-of-distribution
 check, not a validated prediction. Units and operating conditions must match the
 training definition before the number means anything.
 
+## Mapping profiles and schema drift
+
+Onboarding is not a one-off: the same vendor sends the same export every month,
+and headers change eventually. A **mapping profile** stores the mapping plus the
+column set it was built from:
+
+| Field | Content |
+|---|---|
+| `name` | unique profile name, e.g. *Vendor A monthly export* |
+| `source` | vendor or historian description |
+| `mapping` | exact source column → canonical field |
+| `expected_columns` | ordered column set at save time, used for drift |
+| `use_count`, `last_used_at` | adoption and freshness |
+
+Reusing a profile runs a drift comparison before any row is written:
+
+| Change | Detection | Import behaviour |
+|---|---|---|
+| No change | column sets equal | proceeds, reports `unchanged` |
+| Column added | present now, absent at save time | reported as `added`; the column stays unmapped and suggestions are attached |
+| Column renamed | normalised-name match or ≥ 0.8 similarity | mapping follows the new name; **requires acknowledgement** because the source feeding a field changed |
+| Column missing | mapped column absent with no confident rename | **blocked**; accepting drops the field and its mapping |
+
+`POST /onboarding/profiles/{id}/apply` returns the merged mapping and the full
+drift report without storing anything. `POST /onboarding/validate` with a
+`profile_id` includes the same drift section. `POST /onboarding/import` returns
+**409** while drift is blocking; sending `accept_drift: true` imports with the
+acknowledged mapping and refreshes the profile's expected columns and mapping to
+the new schema, so the next export is compared against what was accepted.
+
+Ambiguity is handled conservatively: a rename must be a close normalised match,
+and a column that merely disappeared is never silently mapped onto an unrelated
+new column.
+
 ## Asset registry
 
 `plant_assets` is keyed by canonical `asset_id` and upserts on re-import:
@@ -143,6 +177,19 @@ curl -X POST http://127.0.0.1:8000/api/v1/onboarding/import \
 # 4. registry and the gated score
 curl http://127.0.0.1:8000/api/v1/onboarding/assets
 curl -X POST http://127.0.0.1:8000/api/v1/onboarding/assets/1/score
+
+# 5. save a profile, then reuse it on a later export
+curl -X POST http://127.0.0.1:8000/api/v1/onboarding/profiles \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Vendor A monthly","source":"Vendor A","mapping":{...},"expected_columns":["Engine ID","Cycle","..."]}'
+
+curl -X POST http://127.0.0.1:8000/api/v1/onboarding/profiles/1/apply \
+     -H "Content-Type: text/csv" --data-binary @next_month.csv
+
+# import with the profile; add accept_drift=true after reviewing a 409
+curl -X POST http://127.0.0.1:8000/api/v1/onboarding/import \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Vendor A","profile_id":1,"csv_text":"...","accept_drift":false}'
 ```
 
 Limits: 5 MB per upload, 250,000 rows, delimiter sniffed from the file.
@@ -161,3 +208,8 @@ Limits: 5 MB per upload, 250,000 rows, delimiter sniffed from the file.
   metadata; historical versions of the same asset are not retained.
 - **No automated mapping for ambiguous channels.** By design, but it means a
   large export may need manual work.
+- **Rename detection is heuristic.** A rename with no name similarity is treated
+  as missing + added, which requires manual mapping rather than a guessed match.
+- **Accepted drift replaces the profile baseline.** There is no version history
+  of a profile's previous schemas, only the current one and the per-import
+  report recorded with each asset's quality data.

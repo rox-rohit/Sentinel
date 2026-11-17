@@ -278,3 +278,32 @@ different headers).
 traceable to the mapping that produced it. The cost is operator effort: a new
 header set needs review, and an export with no cycle column or fewer than 30
 cycles is stored but cannot be scored.
+
+## D-016 — Profiles store the expected schema, and drift must be acknowledged
+
+**Context.** A saved mapping is only reusable if the next export still has the
+columns it was built from. Vendors rename headers, add fields and occasionally
+drop one. Applying the old mapping silently would either fail validation later
+or, worse, attach a canonical field to different source data.
+
+**Decision.** A mapping profile stores the exact mapping and the ordered column
+set at save time. Every reuse compares the profile schema with the incoming file:
+added columns are reported and left unmapped (with suggestions); renamed columns
+are matched by normalised name or ≥ 0.8 string similarity, the mapping follows
+the new name, and the import requires `accept_drift: true`; missing mapped
+columns block the import until accepted, at which point their canonical targets
+are dropped. Accepting drift refreshes the profile's mapping and expected
+columns, so the next export is compared with the accepted baseline. Validation
+and the apply endpoint return the same drift report without writing anything.
+
+**Alternatives rejected.** Exact header equality (too brittle for real exports);
+fuzzy auto-apply without acknowledgement (a rename can silently move a sensor to
+a different canonical field); treating missing mapped columns as warnings
+(silently reduces what the asset measures); storing only the mapping and no
+expected schema (no way to detect drift at all).
+
+**Consequences.** Repeated imports are one click plus a review when something
+changed, and the review is recorded in the response and in the asset's quality
+report. The cost is that a genuinely renamed column with no name similarity is
+treated as missing + added and needs manual mapping; profile baseline history is
+not retained, only the current expected schema.

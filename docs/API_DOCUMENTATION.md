@@ -161,6 +161,12 @@ empirical interval and horizon risks.
 | GET | `/onboarding/assets` | Registered plant assets with their exact mapping and readiness |
 | GET | `/onboarding/assets/{id}` | One registered asset |
 | POST | `/onboarding/assets/{id}/score` | Gated RUL inference; 422 with reasons if not eligible |
+| GET | `/onboarding/profiles` | Saved mapping profiles with source, mapping and use count |
+| POST | `/onboarding/profiles` | Save a profile (unique name; 409 on duplicate) |
+| GET | `/onboarding/profiles/{id}` | One profile |
+| PUT | `/onboarding/profiles/{id}` | Replace a profile |
+| DELETE | `/onboarding/profiles/{id}` | Delete a profile |
+| POST | `/onboarding/profiles/{id}/apply` | Raw CSV body → drift report and merged mapping, nothing stored |
 
 Details: `docs/ONBOARDING.md`.
 

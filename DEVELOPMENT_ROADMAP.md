@@ -98,6 +98,9 @@ Deliverables: `PROJECT_VISION.md`, `SYSTEM_ARCHITECTURE.md`,
   `plant-telemetry-v1`, explicit validation before storage or inference, a
   per-asset registry that stores the exact mapping, and a scoring gate that
   refuses assets without the full sensor contract.
+- ✅ Repeatable onboarding: saved mapping profiles per source/vendor, drift
+  detection for renamed/added/missing columns on every reuse, acknowledgement
+  before import, and a profile baseline refreshed after accepted drift.
 - ⬜ Live connector (OPC-UA/MQTT), unit conversion, timestamp partitioning and
   retained asset versions.
 

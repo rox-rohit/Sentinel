@@ -122,13 +122,23 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
       out-of-distribution warning.
 - [x] Data Onboarding page: file/paste, mapping table, validation report,
       register action, registry with mapping preview and gated scoring.
+- [x] Reusable mapping profiles per source/vendor, stored with the exact mapping
+      and column set, unique names, use counts and CRUD endpoints.
+- [x] Schema-drift comparison on every profile reuse: added columns reported
+      with suggestions; renamed columns matched conservatively (normalised or
+      ≥ 0.8 similarity) and carried forward only after acknowledgement; missing
+      mapped columns block the import until accepted. Accepted drift refreshes
+      the profile baseline for the next export.
+- [x] Drift surfaced in validation and apply responses and in the onboarding UI
+      with renamed/added/missing rows and an explicit acknowledgement checkbox.
 
 ### Verification
-- [x] `python -m pytest -q` — 59 passed (data, validation, features, metrics,
+- [x] `python -m pytest -q` — 68 passed (data, validation, features, metrics,
       decisions, API integration, RUL sequence inference, replay cursor and
       WebSocket protocol, strict-JSON frame safety, chronological forecasting,
       alert identity/persistence/transitions, scenario persistence/comparison,
-      onboarding mapping/validation/registry/scoring gate).
+      onboarding mapping/validation/registry/scoring gate, profile CRUD and
+      schema-drift detection/acknowledgement).
 - [x] `bun run typecheck` — clean.
 - [x] `bun run build` — Vite + Worker build, dist/sentinel/index.js produced.
 - [x] `bun test tests` — worker health/404 behaviour.
