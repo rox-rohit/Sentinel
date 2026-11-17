@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { BarsChart } from '../components/charts/Charts'
+import { SavedScenarios } from '../components/maintenance/SavedScenarios'
 import { Badge } from '../components/ui/Badge'
 import { PageHeader, Note } from '../components/ui/PageHeader'
 import { Panel } from '../components/ui/Panel'
@@ -48,7 +49,7 @@ function usePlan() {
 }
 
 export function MaintenanceOptimiser() {
-  const { data } = useData()
+  const { data, source } = useData()
   const { plan, budget, setBudget, status, message, recompute } = usePlan()
   const reactive = plan.scenarios.find((scenario) => scenario.strategy === 'reactive')
   const preventive = plan.scenarios.find((scenario) => scenario.strategy === 'preventive')
@@ -99,6 +100,8 @@ export function MaintenanceOptimiser() {
           ))}
         </div>
       </Panel>
+
+      <SavedScenarios plan={plan} live={source === 'live'} />
 
       <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
         <Panel title="Recommended plan" subtitle="Ordered by RUL urgency" bodyClassName="p-0">

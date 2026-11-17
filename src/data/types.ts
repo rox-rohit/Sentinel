@@ -78,6 +78,46 @@ export interface AlertInbox {
   statuses: AlertStatus[]
 }
 
+export interface ScenarioSummary {
+  id: number
+  name: string
+  note: string | null
+  created_at: string | null
+  budget: number
+  spent: number
+  expected_avoided_loss: number
+  expected_downtime_hours: number
+  assets_serviced: number
+  asset_count: number
+  predictive_cost: number
+  reactive_cost: number
+  preventive_cost: number
+  selected_assets: string[]
+  avoided_per_1000_spent: number | null
+}
+
+export interface ScenarioMetric {
+  key: string
+  label: string
+  unit: 'currency' | 'hours' | 'count'
+  better: 'higher' | 'lower'
+  values: Record<string, number | null>
+  best_ids: string[]
+}
+
+export interface ScenarioComparison {
+  scenarios: ScenarioSummary[]
+  metrics: ScenarioMetric[]
+  deltas_vs_first: Record<string, Record<string, number | null>>
+  assets: {
+    shared: string[]
+    shared_count: number
+    union_count: number
+    unique: Record<string, string[]>
+  }
+  note: string
+}
+
 export interface Snapshot {
   meta: {
     product: string

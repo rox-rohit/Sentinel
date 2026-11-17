@@ -1,5 +1,11 @@
 import snapshotJson from '../generated/snapshot.json'
-import type { AlertInbox, AlertLifecycle, Snapshot } from '../data/types'
+import type {
+  AlertInbox,
+  AlertLifecycle,
+  ScenarioComparison,
+  ScenarioSummary,
+  Snapshot,
+} from '../data/types'
 
 export const SNAPSHOT = snapshotJson as unknown as Snapshot
 
@@ -97,6 +103,28 @@ export async function acknowledgeAlert(id: number, note?: string): Promise<Alert
 
 export async function resolveAlert(id: number, note?: string): Promise<AlertLifecycle> {
   return postJson<AlertLifecycle>(`/alerts/${id}/resolve`, { actor: ALERT_ACTOR, note })
+}
+
+export async function fetchScenarios(): Promise<ScenarioSummary[]> {
+  const payload = await getJson<{ scenarios: ScenarioSummary[] }>('/maintenance/scenarios')
+  return payload.scenarios
+}
+
+export async function saveScenario(name: string, budget: number, note?: string) {
+  return postJson<ScenarioSummary>('/maintenance/scenarios', { name, budget, note })
+}
+
+export async function compareScenarios(ids: number[]): Promise<ScenarioComparison> {
+  const query = ids.map((id) => `ids=${id}`).join('&')
+  return getJson<ScenarioComparison>(`/maintenance/scenarios/compare?${query}`, 8000)
+}
+
+export async function deleteScenario(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/maintenance/scenarios/${id}`, { method: 'DELETE' })
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new Error(payload.error?.message ?? `Request failed (${response.status})`)
+  }
 }
 
 async function postJson<T = Record<string, unknown>>(path: string, body: unknown): Promise<T> {
