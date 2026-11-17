@@ -70,6 +70,19 @@ class MaintenanceScenarioRequest(BaseModel):
     assets: list[MaintenanceAsset] | None = None
 
 
+class OnboardingMappingRequest(BaseModel):
+    """Customer CSV text plus the source-column -> canonical-field mapping."""
+
+    csv_text: str = Field(..., min_length=1)
+    mapping: dict[str, str] = Field(..., description="source column -> canonical target")
+    source_file: str = Field("upload.csv", max_length=255)
+
+
+class OnboardingImportRequest(OnboardingMappingRequest):
+    name: str = Field(..., min_length=1, max_length=120)
+    notes: str | None = Field(None, max_length=500)
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str

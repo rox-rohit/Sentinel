@@ -1,6 +1,7 @@
 """API route modules."""
 
-from sentinel.api.routes import alerts, catalog, decisions, fleet, health, predictions, replay
+from sentinel.api.routes import (alerts, catalog, decisions, fleet, health, onboarding,
+                                 predictions, replay)
 
 ROUTERS = [
     health.router,
@@ -10,6 +11,7 @@ ROUTERS = [
     catalog.router,
     replay.router,
     alerts.router,
+    onboarding.router,
 ]
 
 __all__ = ["ROUTERS"]

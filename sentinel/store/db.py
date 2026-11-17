@@ -85,6 +85,27 @@ class AlertRecord(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class PlantAssetRecord(Base):
+    __tablename__ = "plant_assets"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    asset_id: Mapped[str] = mapped_column(String(96), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(160))
+    source_file: Mapped[str] = mapped_column(String(255), default="")
+    status: Mapped[str] = mapped_column(String(24), default="registered")
+    score_eligible: Mapped[bool] = mapped_column(Boolean, default=False)
+    rows: Mapped[int] = mapped_column(Integer, default=0)
+    cycles: Mapped[int] = mapped_column(Integer, default=0)
+    min_cycle: Mapped[int] = mapped_column(Integer, default=0)
+    max_cycle: Mapped[int] = mapped_column(Integer, default=0)
+    sensors_json: Mapped[str] = mapped_column(Text, default="[]")
+    mapping_json: Mapped[str] = mapped_column(Text, default="{}")
+    quality_json: Mapped[str] = mapped_column(Text, default="{}")
+    parquet_path: Mapped[str] = mapped_column(String(255), default="")
+    notes: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class MaintenanceScenarioRecord(Base):
     __tablename__ = "maintenance_scenarios"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -282,6 +303,70 @@ def resolve_alert(alert_id: int, *, actor: str, note: str | None = None) -> dict
         record.updated_at = _utcnow()
         session.flush()
         return _alert_payload(record)
+
+
+def _plant_asset_payload(record: PlantAssetRecord) -> dict:
+    return {
+        "id": record.id,
+        "asset_id": record.asset_id,
+        "name": record.name,
+        "source_file": record.source_file,
+        "status": record.status,
+        "score_eligible": record.score_eligible,
+        "rows": record.rows,
+        "cycles": record.cycles,
+        "min_cycle": record.min_cycle,
+        "max_cycle": record.max_cycle,
+        "sensors": json.loads(record.sensors_json),
+        "mapping": json.loads(record.mapping_json),
+        "quality": json.loads(record.quality_json),
+        "parquet_path": record.parquet_path,
+        "notes": record.notes,
+        "created_at": record.created_at.isoformat(),
+        "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+    }
+
+
+def upsert_plant_asset(payload: dict) -> dict:
+    """Register or refresh an onboarded plant asset (unique by canonical asset id)."""
+    with session_scope() as session:
+        record = session.scalars(
+            select(PlantAssetRecord).where(PlantAssetRecord.asset_id == payload["asset_id"])
+        ).first()
+        if record is None:
+            record = PlantAssetRecord(asset_id=payload["asset_id"],
+                                      name=payload.get("name", payload["asset_id"]))
+            session.add(record)
+        record.name = payload.get("name", record.name)
+        record.source_file = payload.get("source_file", "")
+        record.status = payload.get("status", "registered")
+        record.score_eligible = bool(payload.get("score_eligible", False))
+        record.rows = int(payload.get("rows", 0))
+        record.cycles = int(payload.get("cycles", 0))
+        record.min_cycle = int(payload.get("min_cycle", 0))
+        record.max_cycle = int(payload.get("max_cycle", 0))
+        record.sensors_json = json.dumps(payload.get("sensors", []))
+        record.mapping_json = json.dumps(payload.get("mapping", {}))
+        record.quality_json = json.dumps(payload.get("quality", {}), default=str)
+        record.parquet_path = payload.get("parquet_path", "")
+        record.notes = payload.get("notes")
+        record.updated_at = _utcnow()
+        session.flush()
+        return _plant_asset_payload(record)
+
+
+def list_plant_assets(limit: int = 100) -> list[dict]:
+    with session_scope() as session:
+        rows = session.scalars(
+            select(PlantAssetRecord).order_by(PlantAssetRecord.created_at.desc()).limit(limit)
+        ).all()
+        return [_plant_asset_payload(row) for row in rows]
+
+
+def get_plant_asset(asset_id: int) -> dict | None:
+    with session_scope() as session:
+        record = session.get(PlantAssetRecord, asset_id)
+        return _plant_asset_payload(record) if record else None
 
 
 def _scenario_payload(record: MaintenanceScenarioRecord, *, include_plan: bool = False) -> dict:
