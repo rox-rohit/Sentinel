@@ -69,6 +69,7 @@ class AlertRecord(Base):
     label: Mapped[str] = mapped_column(String(64), default="")
     severity: Mapped[str] = mapped_column(String(16))
     kind: Mapped[str] = mapped_column(String(32))
+    source: Mapped[str] = mapped_column(String(16), default="cmapss")
     message: Mapped[str] = mapped_column(Text)
     cycle: Mapped[int] = mapped_column(Integer, default=0)
     score: Mapped[float] = mapped_column(Float, default=0.0)
@@ -101,6 +102,13 @@ class PlantAssetRecord(Base):
     mapping_json: Mapped[str] = mapped_column(Text, default="{}")
     quality_json: Mapped[str] = mapped_column(Text, default="{}")
     parquet_path: Mapped[str] = mapped_column(String(255), default="")
+    baseline_json: Mapped[str] = mapped_column(Text, default="{}")
+    health_json: Mapped[str] = mapped_column(Text, default="{}")
+    health_score: Mapped[float] = mapped_column(Float, nullable=True)
+    health_status: Mapped[str] = mapped_column(String(24), default="")
+    anomaly_score: Mapped[float] = mapped_column(Float, nullable=True)
+    severity: Mapped[str] = mapped_column(String(16), default="")
+    baseline_cycles: Mapped[int] = mapped_column(Integer, default=0)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -154,6 +162,17 @@ _ALERT_COLUMN_MIGRATIONS = {
     "resolved_by": "VARCHAR(80)",
     "note": "TEXT",
     "updated_at": "TIMESTAMP",
+    "source": "VARCHAR(16) NOT NULL DEFAULT 'cmapss'",
+}
+
+_PLANT_COLUMN_MIGRATIONS = {
+    "baseline_json": "TEXT NOT NULL DEFAULT '{}'",
+    "health_json": "TEXT NOT NULL DEFAULT '{}'",
+    "health_score": "FLOAT",
+    "health_status": "VARCHAR(24) NOT NULL DEFAULT ''",
+    "anomaly_score": "FLOAT",
+    "severity": "VARCHAR(16) NOT NULL DEFAULT ''",
+    "baseline_cycles": "INTEGER NOT NULL DEFAULT 0",
 }
 
 
@@ -183,10 +202,23 @@ def _migrate_alerts() -> None:
             ))
 
 
+def _migrate_plant_assets() -> None:
+    """Add baseline/health columns to a plant registry created by an earlier build."""
+    inspector = inspect(engine)
+    if "plant_assets" not in inspector.get_table_names():
+        return
+    existing = {column["name"] for column in inspector.get_columns("plant_assets")}
+    with engine.begin() as connection:
+        for name, ddl in _PLANT_COLUMN_MIGRATIONS.items():
+            if name not in existing:
+                connection.execute(text(f"ALTER TABLE plant_assets ADD COLUMN {name} {ddl}"))
+
+
 def init_db() -> None:
     settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(engine)
     _migrate_alerts()
+    _migrate_plant_assets()
 
 
 @contextmanager
@@ -240,6 +272,7 @@ def _alert_payload(record: AlertRecord) -> dict:
         "sensors": [],
         "severity": record.severity,
         "kind": record.kind,
+        "source": record.source or "cmapss",
         "message": record.message,
         "cycle": record.cycle,
         "score": record.score,
@@ -432,6 +465,13 @@ def _plant_asset_payload(record: PlantAssetRecord) -> dict:
         "mapping": json.loads(record.mapping_json),
         "quality": json.loads(record.quality_json),
         "parquet_path": record.parquet_path,
+        "baseline": json.loads(record.baseline_json) if record.baseline_json else None,
+        "health": json.loads(record.health_json) if record.health_json else None,
+        "health_score": record.health_score,
+        "health_status": record.health_status or None,
+        "anomaly_score": record.anomaly_score,
+        "severity": record.severity or None,
+        "baseline_cycles": record.baseline_cycles,
         "notes": record.notes,
         "created_at": record.created_at.isoformat(),
         "updated_at": record.updated_at.isoformat() if record.updated_at else None,
@@ -460,10 +500,74 @@ def upsert_plant_asset(payload: dict) -> dict:
         record.mapping_json = json.dumps(payload.get("mapping", {}))
         record.quality_json = json.dumps(payload.get("quality", {}), default=str)
         record.parquet_path = payload.get("parquet_path", "")
+        baseline = payload.get("baseline")
+        health = payload.get("health")
+        record.baseline_json = json.dumps(baseline, default=str) if baseline else "{}"
+        record.health_json = json.dumps(health, default=str) if health else "{}"
+        record.health_score = (health or {}).get("health_score")
+        record.health_status = (health or {}).get("category", "")
+        record.anomaly_score = (health or {}).get("anomaly_score")
+        record.severity = (health or {}).get("severity", "")
+        record.baseline_cycles = int((health or {}).get("coverage", {}).get("baseline_cycles", 0))
         record.notes = payload.get("notes")
         record.updated_at = _utcnow()
         session.flush()
         return _plant_asset_payload(record)
+
+
+def update_plant_health(asset_id: int, *, baseline: dict | None = None,
+                        health: dict | None = None) -> dict | None:
+    """Persist a recomputed health assessment (and optionally a new baseline)."""
+    with session_scope() as session:
+        record = session.get(PlantAssetRecord, asset_id)
+        if record is None:
+            return None
+        if baseline is not None:
+            record.baseline_json = json.dumps(baseline, default=str)
+            record.baseline_cycles = int(baseline.get("baseline_cycles", 0))
+        if health is not None:
+            record.health_json = json.dumps(health, default=str)
+            record.health_score = health.get("health_score")
+            record.health_status = health.get("category", "")
+            record.anomaly_score = health.get("anomaly_score")
+            record.severity = health.get("severity", "")
+            record.baseline_cycles = int(health.get("coverage", {}).get(
+                "baseline_cycles", record.baseline_cycles))
+        record.updated_at = _utcnow()
+        session.flush()
+        return _plant_asset_payload(record)
+
+
+def upsert_plant_alert(alert: dict) -> dict:
+    """Create or refresh a plant alert; resolved alerts stay resolved as audit."""
+    fingerprint = alert_fingerprint(alert["asset_id"], alert["kind"], alert["cycle"])
+    with session_scope() as session:
+        row = session.scalars(
+            select(AlertRecord).where(AlertRecord.fingerprint == fingerprint)
+        ).first()
+        if row is None:
+            row = AlertRecord(
+                fingerprint=fingerprint,
+                asset_id=alert["asset_id"],
+                label=alert.get("label", alert["asset_id"]),
+                severity=alert["severity"],
+                kind=alert["kind"],
+                source="plant",
+                message=alert["message"],
+                cycle=int(alert["cycle"]),
+                score=float(alert.get("score", 0.0)),
+                status="open",
+                acknowledged=False,
+            )
+            session.add(row)
+        elif row.status != "resolved":
+            row.label = alert.get("label", alert["asset_id"])
+            row.severity = alert["severity"]
+            row.message = alert["message"]
+            row.score = float(alert.get("score", 0.0))
+            row.updated_at = _utcnow()
+        session.flush()
+        return _alert_payload(row)
 
 
 def list_plant_assets(limit: int = 100) -> list[dict]:
@@ -545,7 +649,9 @@ def sync_alerts(alerts: list[dict], *, prune: bool = True) -> dict:
     current = {alert_fingerprint(a["asset_id"], a["kind"], a["cycle"]) for a in alerts}
     created = updated = removed = 0
     with session_scope() as session:
-        rows = {row.fingerprint: row for row in session.scalars(select(AlertRecord)).all()}
+        rows = {row.fingerprint: row for row in session.scalars(
+            select(AlertRecord).where(AlertRecord.source == "cmapss")
+        ).all()}
         for alert in alerts:
             fingerprint = alert_fingerprint(alert["asset_id"], alert["kind"], alert["cycle"])
             row = rows.get(fingerprint)
@@ -556,6 +662,7 @@ def sync_alerts(alerts: list[dict], *, prune: bool = True) -> dict:
                     label=alert.get("label", alert["asset_id"]),
                     severity=alert["severity"],
                     kind=alert["kind"],
+                    source=alert.get("source", "cmapss"),
                     message=alert["message"],
                     cycle=int(alert["cycle"]),
                     score=float(alert["score"]),

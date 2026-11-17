@@ -6,7 +6,9 @@ The flow is deliberately explicit and stateless:
   POST /onboarding/validate  CSV + mapping -> blocking report
   POST /onboarding/import    validated CSV + mapping -> per-asset parquet + registry
   GET  /onboarding/assets    registered plant assets with their mappings
-  POST /onboarding/assets/{id}/score  gate + RUL inference
+  GET  /onboarding/health    partial-sensor health for the onboarded plant fleet
+  POST /onboarding/assets/{id}/health recompute baseline-relative health + alert
+  POST /onboarding/assets/{id}/score  gate + RUL inference (opt-in, 21 sensors)
 """
 
 from __future__ import annotations
@@ -18,8 +20,9 @@ from sentinel.api.schemas import (MappingProfileRequest, OnboardingImportRequest
                                   OnboardingMappingRequest)
 from sentinel.inference.service import SentinelService
 from sentinel.onboarding.plant import inspect_frame, parse_csv, schema_payload, validate_csv
-from sentinel.onboarding.service import (DriftBlocked, OnboardingBlocked, import_csv,
-                                         resolve_profile, score_asset)
+from sentinel.onboarding.service import (DriftBlocked, OnboardingBlocked, health_overview,
+                                         import_csv, recompute_health, resolve_profile,
+                                         score_asset)
 from sentinel.store.db import (delete_mapping_profile, get_mapping_profile, get_plant_asset,
                                list_mapping_profiles, list_plant_assets, save_mapping_profile,
                                update_mapping_profile)
@@ -199,6 +202,22 @@ def asset(registry_id: int) -> dict:
     if record is None:
         raise HTTPException(status_code=404, detail=f"Unknown plant asset {registry_id}")
     return record
+
+
+@router.get("/onboarding/health",
+            summary="Partial-sensor health for onboarded plant assets (not the C-MAPSS fleet)")
+def plant_health() -> dict:
+    return health_overview()
+
+
+@router.post("/onboarding/assets/{registry_id}/health",
+             summary="Recompute an asset's baseline-relative health and refresh its alert",
+             dependencies=[Depends(require_api_key)])
+def refresh_health(registry_id: int) -> dict:
+    result = recompute_health(registry_id)
+    if not result.get("found"):
+        raise HTTPException(status_code=404, detail=f"Unknown plant asset {registry_id}")
+    return result
 
 
 @router.post("/onboarding/assets/{registry_id}/score",
