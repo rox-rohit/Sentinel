@@ -126,6 +126,14 @@ the API and the Settings page. This is a decision aid, not a physical index.
   predictive (planned + residual expected failures).
 - Assumptions are returned with the plan and shown in the UI. Savings are
   scenario estimates, not measured plant outcomes.
+- Saved scenarios persist the complete plan (selection, strategy costs,
+  assumptions) in the metadata store. A saved plan is a snapshot of one
+  optimisation run and is not recomputed when the fleet is rebuilt, so two
+  saved plans compared side by side remain a fair record of the budgets tested.
+  Comparison reports expected avoided loss, predictive total cost, planned
+  spend, downtime, assets serviced and avoided loss per 1,000 spent, marking the
+  better value per metric rather than declaring a single winner: a larger budget
+  usually services more assets while a smaller one is more efficient per dollar.
 
 ## 9. Drift
 

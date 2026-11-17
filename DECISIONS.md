@@ -222,3 +222,28 @@ need a write path into a static file).
 store is the single source of truth for operational state. The UI records
 `console-operator` as the actor until real identities exist; the API already
 accepts any actor string, so an auth layer can supply it later.
+
+## D-014 — Saved scenarios store the computed plan, not a budget to re-run
+
+**Context.** Comparing maintenance budgets only works if both sides are
+reproducible records. Re-optimising a saved budget after the fleet or cost model
+changes would silently rewrite history and make a comparison misleading.
+
+**Decision.** `POST /maintenance/scenarios` runs the optimiser once and persists
+the complete returned plan as JSON (selection, deferred list, strategy costs,
+assumptions) alongside flattened summary columns for listing and comparison.
+Comparison loads those stored plans; it never recomputes them. A scenario is
+immutable until deleted. Each metric marks its own best value instead of
+producing one aggregate "winner", because budgets trade total avoided loss
+against efficiency per dollar.
+
+**Alternatives rejected.** Storing only the budget and recomputing on read
+(comparisons drift with the fleet); serialising plans to files (no queryable
+list, no delete, awkward in containers); adding scenarios to the snapshot (the
+build would overwrite user-created state — the same reason alert lifecycle moved
+to the store, D-013).
+
+**Consequences.** Comparison is a reproducible audit of tested budgets. Saved
+plans can become stale relative to the current fleet, so the record carries its
+creation timestamp and the page labels them as saved runs rather than current
+recommendations.

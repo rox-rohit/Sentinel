@@ -142,6 +142,11 @@ empirical interval and horizon risks.
 |---|---|---|
 | GET | `/maintenance?budget=` | Current plan, or re-optimised for a new budget |
 | POST | `/maintenance/optimize` | Optimise with custom assets (`MaintenanceAsset[]`) |
+| GET | `/maintenance/scenarios` | Saved optimisation scenarios (newest first) |
+| POST | `/maintenance/scenarios` | Optimise at a budget and save it (`name`, `budget`, optional `note`) |
+| GET | `/maintenance/scenarios/compare?ids=` | Side-by-side comparison of 2–6 saved scenarios |
+| GET | `/maintenance/scenarios/{id}` | One saved scenario, including its full plan |
+| DELETE | `/maintenance/scenarios/{id}` | Delete a saved scenario |
 | GET | `/settings` | Cost model, health weights, thresholds |
 | GET | `/drift` | PSI report for both datasets |
 

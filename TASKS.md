@@ -89,11 +89,28 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
 - [x] Anomaly Centre "Alert inbox" with status filters, counts and Ack/Resolve
       controls; falls back to the read-only snapshot list when the API is down.
 
+### Phase 7 — Saved maintenance scenarios
+- [x] `maintenance_scenarios` table persists the complete optimisation plan
+      (selection, strategy costs, assumptions) with name, note, budget and
+      summary columns; saved plans survive fleet rebuilds unchanged.
+- [x] `POST /maintenance/scenarios` optimises at the requested budget and saves
+      the result; `GET /maintenance/scenarios` lists summaries;
+      `GET /maintenance/scenarios/{id}` returns the full plan;
+      `DELETE /maintenance/scenarios/{id}` removes one.
+- [x] `GET /maintenance/scenarios/compare?ids=` compares 2–6 scenarios on
+      avoided loss, predictive cost, spend, downtime, assets serviced and
+      avoided loss per 1,000 spent; each metric marks its best value, and asset
+      overlap (shared/distinct) is reported. Unknown ids return 404, fewer than
+      two ids 422.
+- [x] Maintenance Optimiser "Saved scenarios" panel: name and save the current
+      plan, select up to four, compare side by side with best-value highlighting,
+      and delete; offline mode explains that persistence needs the API.
+
 ### Verification
-- [x] `python -m pytest -q` — 43 passed (data, validation, features, metrics,
+- [x] `python -m pytest -q` — 49 passed (data, validation, features, metrics,
       decisions, API integration, RUL sequence inference, replay cursor and
       WebSocket protocol, strict-JSON frame safety, chronological forecasting,
-      alert identity/persistence/transitions).
+      alert identity/persistence/transitions, scenario persistence/comparison).
 - [x] `bun run typecheck` — clean.
 - [x] `bun run build` — Vite + Worker build, dist/sentinel/index.js produced.
 - [x] `bun test tests` — worker health/404 behaviour.
@@ -106,9 +123,8 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
 ## ⬜ Pending — next tasks, in order
 1. **Phase 4** — deep learning lab once disk/CUDA allow (DECISIONS D-008):
    sequence tensors, LSTM/GRU/1D-CNN/Transformer, early stopping, checkpoints.
-2. **Phase 7** — saved scenario comparison for maintenance optimisation.
-3. **Phase 6** — MLflow tracking + retraining workflow with promotion policy.
-4. **Phase 8** — architecture diagram, technical report, video script.
+2. **Phase 6** — MLflow tracking + retraining workflow with promotion policy.
+3. **Phase 8** — architecture diagram, technical report, video script.
 
 ## Known limitations
 - Local metadata store is SQLite (`SENTINEL_DATABASE_URL` switches to PostgreSQL).

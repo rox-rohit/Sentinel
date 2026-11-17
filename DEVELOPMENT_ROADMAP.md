@@ -89,7 +89,10 @@ Deliverables: `PROJECT_VISION.md`, `SYSTEM_ARCHITECTURE.md`,
   the metadata database with actor, timestamp and note, and an Alert inbox with
   status filters and Ack/Resolve controls on the Anomaly Centre. State survives
   rebuilds; only still-open alerts the pipeline no longer generates are pruned.
-- ⬜ Saved maintenance scenario comparison.
+- ✅ Saved maintenance scenario comparison: optimisation plans persist in the
+  metadata store by name and budget, and 2–6 saved scenarios compare side by
+  side on avoided loss, total cost, spend, downtime, serviced assets and
+  cost-efficiency, with asset overlap and best-value marking.
 
 Verification for every page: it reads only fields that exist in the snapshot /
 API contract; the UI labels live vs artifact-snapshot mode in the top bar.
@@ -101,5 +104,5 @@ API contract; the UI labels live vs artifact-snapshot mode in the top bar.
 
 ## Next recommended task
 
-Phase 7's saved scenario comparison, then MLflow tracking.
+Phase 6's MLflow tracking and retraining/promotion workflow.
 See `TASKS.md` for the granular list.
