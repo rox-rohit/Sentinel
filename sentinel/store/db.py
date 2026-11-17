@@ -106,6 +106,20 @@ class PlantAssetRecord(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class MappingProfileRecord(Base):
+    __tablename__ = "mapping_profiles"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(96), unique=True, index=True)
+    source: Mapped[str] = mapped_column(String(120), default="")
+    mapping_json: Mapped[str] = mapped_column(Text, default="{}")
+    expected_columns_json: Mapped[str] = mapped_column(Text, default="[]")
+    notes: Mapped[str] = mapped_column(Text, nullable=True)
+    use_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class MaintenanceScenarioRecord(Base):
     __tablename__ = "maintenance_scenarios"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -303,6 +317,103 @@ def resolve_alert(alert_id: int, *, actor: str, note: str | None = None) -> dict
         record.updated_at = _utcnow()
         session.flush()
         return _alert_payload(record)
+
+
+def _profile_payload(record: MappingProfileRecord) -> dict:
+    return {
+        "id": record.id,
+        "name": record.name,
+        "source": record.source,
+        "mapping": json.loads(record.mapping_json),
+        "expected_columns": json.loads(record.expected_columns_json),
+        "notes": record.notes,
+        "use_count": record.use_count,
+        "created_at": record.created_at.isoformat(),
+        "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+        "last_used_at": record.last_used_at.isoformat() if record.last_used_at else None,
+    }
+
+
+def save_mapping_profile(*, name: str, source: str, mapping: dict[str, str],
+                         expected_columns: list[str], notes: str | None = None) -> dict:
+    """Create a reusable mapping profile; names are unique."""
+    with session_scope() as session:
+        existing = session.scalars(
+            select(MappingProfileRecord).where(MappingProfileRecord.name == name.strip())
+        ).first()
+        if existing is not None:
+            raise ValueError(f"A mapping profile named {name.strip()!r} already exists.")
+        record = MappingProfileRecord(
+            name=name.strip(),
+            source=source,
+            mapping_json=json.dumps(mapping),
+            expected_columns_json=json.dumps(expected_columns),
+            notes=notes,
+        )
+        session.add(record)
+        session.flush()
+        return _profile_payload(record)
+
+
+def list_mapping_profiles(limit: int = 100) -> list[dict]:
+    with session_scope() as session:
+        rows = session.scalars(
+            select(MappingProfileRecord)
+            .order_by(MappingProfileRecord.created_at.desc())
+            .limit(limit)
+        ).all()
+        return [_profile_payload(row) for row in rows]
+
+
+def get_mapping_profile(profile_id: int) -> dict | None:
+    with session_scope() as session:
+        record = session.get(MappingProfileRecord, profile_id)
+        return _profile_payload(record) if record else None
+
+
+def update_mapping_profile(profile_id: int, **changes) -> dict | None:
+    with session_scope() as session:
+        record = session.get(MappingProfileRecord, profile_id)
+        if record is None:
+            return None
+        if "name" in changes and changes["name"]:
+            record.name = str(changes["name"]).strip()
+        if "source" in changes and changes["source"] is not None:
+            record.source = changes["source"]
+        if "notes" in changes:
+            record.notes = changes["notes"]
+        if "mapping" in changes and changes["mapping"] is not None:
+            record.mapping_json = json.dumps(changes["mapping"])
+        if "expected_columns" in changes and changes["expected_columns"] is not None:
+            record.expected_columns_json = json.dumps(changes["expected_columns"])
+        record.updated_at = _utcnow()
+        session.flush()
+        return _profile_payload(record)
+
+
+def touch_mapping_profile(profile_id: int, *, mapping: dict[str, str] | None = None,
+                          expected_columns: list[str] | None = None) -> None:
+    """Record a use; optionally refresh the expected schema after accepted drift."""
+    with session_scope() as session:
+        record = session.get(MappingProfileRecord, profile_id)
+        if record is None:
+            return
+        record.use_count += 1
+        record.last_used_at = _utcnow()
+        if mapping is not None:
+            record.mapping_json = json.dumps(mapping)
+        if expected_columns is not None:
+            record.expected_columns_json = json.dumps(expected_columns)
+        record.updated_at = _utcnow()
+
+
+def delete_mapping_profile(profile_id: int) -> bool:
+    with session_scope() as session:
+        record = session.get(MappingProfileRecord, profile_id)
+        if record is None:
+            return False
+        session.delete(record)
+        return True
 
 
 def _plant_asset_payload(record: PlantAssetRecord) -> dict:

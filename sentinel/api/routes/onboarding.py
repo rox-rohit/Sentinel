@@ -14,11 +14,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from sentinel.api.deps import require_api_key, service_dependency
-from sentinel.api.schemas import OnboardingImportRequest, OnboardingMappingRequest
+from sentinel.api.schemas import (MappingProfileRequest, OnboardingImportRequest,
+                                  OnboardingMappingRequest)
 from sentinel.inference.service import SentinelService
 from sentinel.onboarding.plant import inspect_frame, parse_csv, schema_payload, validate_csv
-from sentinel.onboarding.service import OnboardingBlocked, import_csv, score_asset
-from sentinel.store.db import get_plant_asset, list_plant_assets
+from sentinel.onboarding.service import (DriftBlocked, OnboardingBlocked, import_csv,
+                                         resolve_profile, score_asset)
+from sentinel.store.db import (delete_mapping_profile, get_mapping_profile, get_plant_asset,
+                               list_mapping_profiles, list_plant_assets, save_mapping_profile,
+                               update_mapping_profile)
 
 router = APIRouter(tags=["onboarding"])
 
@@ -56,11 +60,25 @@ async def inspect(request: Request,
 @router.post("/onboarding/validate", summary="Validate a mapped CSV before storing anything")
 def validate(payload: OnboardingMappingRequest) -> dict:
     _guard_size(payload.csv_text)
+    mapping = payload.mapping
+    drift = None
+    if payload.profile_id is not None:
+        try:
+            mapping, drift = resolve_profile(payload.profile_id, payload.csv_text)
+        except LookupError as exc:
+            raise HTTPException(status_code=404,
+                                detail=f"Unknown mapping profile {payload.profile_id}") from exc
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Could not parse CSV: {exc}") from exc
+    if not mapping:
+        raise HTTPException(status_code=422,
+                            detail="Provide a mapping or a saved profile_id.")
     try:
-        report = validate_csv(payload.csv_text, payload.mapping,
+        report = validate_csv(payload.csv_text, mapping,
                               source_file=payload.source_file)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Could not parse CSV: {exc}") from exc
+    report["drift"] = drift
     return report
 
 
@@ -68,13 +86,93 @@ def validate(payload: OnboardingMappingRequest) -> dict:
              dependencies=[Depends(require_api_key)])
 def import_assets(payload: OnboardingImportRequest) -> dict:
     _guard_size(payload.csv_text)
+    if not payload.mapping and payload.profile_id is None:
+        raise HTTPException(status_code=422, detail="Provide a mapping or a saved profile_id.")
     try:
-        return import_csv(name=payload.name, text=payload.csv_text, mapping=payload.mapping,
-                          source_file=payload.source_file, notes=payload.notes)
+        return import_csv(name=payload.name, text=payload.csv_text,
+                          mapping=payload.mapping or {},
+                          source_file=payload.source_file, notes=payload.notes,
+                          profile_id=payload.profile_id, accept_drift=payload.accept_drift)
+    except DriftBlocked as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except OnboardingBlocked as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404,
+                            detail=f"Unknown mapping profile {payload.profile_id}") from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Import failed: {exc}") from exc
+
+
+@router.get("/onboarding/profiles", summary="Saved mapping profiles per source/vendor")
+def profiles() -> dict:
+    rows = list_mapping_profiles()
+    return {
+        "profiles": rows,
+        "note": (
+            "A profile stores the exact source-to-canonical mapping and the column set it was "
+            "built from. Reusing it on a new export compares schemas and reports drift before "
+            "any row is stored."
+        ),
+    }
+
+
+@router.post("/onboarding/profiles", summary="Save a reusable mapping profile",
+             dependencies=[Depends(require_api_key)])
+def create_profile(payload: MappingProfileRequest) -> dict:
+    try:
+        return save_mapping_profile(name=payload.name, source=payload.source,
+                                    mapping=payload.mapping,
+                                    expected_columns=payload.expected_columns,
+                                    notes=payload.notes)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/onboarding/profiles/{profile_id}", summary="One mapping profile")
+def profile(profile_id: int) -> dict:
+    record = get_mapping_profile(profile_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"Unknown mapping profile {profile_id}")
+    return record
+
+
+@router.put("/onboarding/profiles/{profile_id}", summary="Replace a mapping profile",
+            dependencies=[Depends(require_api_key)])
+def replace_profile(profile_id: int, payload: MappingProfileRequest) -> dict:
+    record = update_mapping_profile(
+        profile_id, name=payload.name, source=payload.source, mapping=payload.mapping,
+        expected_columns=payload.expected_columns, notes=payload.notes,
+    )
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"Unknown mapping profile {profile_id}")
+    return record
+
+
+@router.delete("/onboarding/profiles/{profile_id}", summary="Delete a mapping profile",
+               dependencies=[Depends(require_api_key)])
+def remove_profile(profile_id: int) -> dict:
+    if not delete_mapping_profile(profile_id):
+        raise HTTPException(status_code=404, detail=f"Unknown mapping profile {profile_id}")
+    return {"deleted": True, "id": profile_id}
+
+
+@router.post("/onboarding/profiles/{profile_id}/apply",
+             summary="Compare a new export with a saved profile before importing")
+async def apply_profile(profile_id: int, request: Request) -> dict:
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty request body.")
+    if len(body) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Upload exceeds the 5 MB limit.")
+    text = body.decode("utf-8-sig", errors="replace")
+    try:
+        mapping, drift = resolve_profile(profile_id, text)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown mapping profile {profile_id}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not parse CSV: {exc}") from exc
+    return {"profile_id": profile_id, "mapping": mapping, "drift": drift}
 
 
 @router.get("/onboarding/assets", summary="Registered plant assets and their sensor mappings")

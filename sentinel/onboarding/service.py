@@ -13,11 +13,21 @@ import pandas as pd
 
 from sentinel.config import DATA_PROCESSED
 from sentinel.inference.service import SentinelService
+from sentinel.onboarding.drift import compare_columns
 from sentinel.onboarding.plant import (MAX_CYCLES_FOR_SCORING, SENSORS, canonical_frame,
-                                       validate_csv)
-from sentinel.store.db import get_plant_asset, list_plant_assets, upsert_plant_asset
+                                       parse_csv, validate_csv)
+from sentinel.store.db import (get_mapping_profile, get_plant_asset, list_plant_assets,
+                               touch_mapping_profile, upsert_plant_asset)
 
 PLANT_DIR = DATA_PROCESSED / "plant"
+
+
+class DriftBlocked(ValueError):
+    """Raised when a saved profile's schema drifted and was not acknowledged."""
+
+    def __init__(self, drift: dict) -> None:
+        self.drift = drift
+        super().__init__(drift.get("reason") or "Schema drift requires acknowledgement.")
 
 
 class OnboardingBlocked(ValueError):
@@ -32,13 +42,35 @@ class OnboardingBlocked(ValueError):
         )
 
 
+def resolve_profile(profile_id: int, text: str) -> tuple[dict, dict | None]:
+    """Load a profile and compare its expected schema with the incoming file."""
+    profile = get_mapping_profile(profile_id)
+    if profile is None:
+        raise LookupError(profile_id)
+    frame = parse_csv(text)
+    drift = compare_columns(profile["expected_columns"], [str(column) for column in frame.columns],
+                            profile["mapping"])
+    drift["profile_id"] = profile_id
+    drift["profile_name"] = profile["name"]
+    mapping = drift["mapping"] if drift["changed"] else profile["mapping"]
+    return mapping, drift
+
+
 def _slug(value: str) -> str:
     return re.sub(r"[^a-z0-9_-]+", "-", value.lower()).strip("-") or "asset"
 
 
 def import_csv(*, name: str, text: str, mapping: dict[str, str],
-               source_file: str = "upload", notes: str | None = None) -> dict:
+               source_file: str = "upload", notes: str | None = None,
+               profile_id: int | None = None, accept_drift: bool = False) -> dict:
+    drift = None
+    if profile_id is not None:
+        mapping, drift = resolve_profile(profile_id, text)
+        if drift and drift["blocking"] and not accept_drift:
+            raise DriftBlocked(drift)
     report = validate_csv(text, mapping, source_file=source_file)
+    if drift is not None:
+        report["drift"] = drift
     if report["readiness"] == "blocked":
         raise OnboardingBlocked(report)
     if not report["rows"]:
@@ -102,7 +134,16 @@ def import_csv(*, name: str, text: str, mapping: dict[str, str],
             "parquet_path": str(path),
             "notes": notes,
         }))
-    return {"report": report, "assets": registered, "stored_at": str(PLANT_DIR)}
+    if profile_id is not None and drift is not None:
+        touch_mapping_profile(
+            profile_id,
+            mapping=mapping if (accept_drift and drift["changed"]) else None,
+            expected_columns=([str(column) for column in parse_csv(text).columns]
+                              if (accept_drift and drift["changed"]) else None),
+        )
+
+    return {"report": report, "assets": registered, "stored_at": str(PLANT_DIR),
+            "drift": drift}
 
 
 def score_asset(registry_id: int, service: SentinelService) -> dict:
@@ -146,4 +187,5 @@ def score_asset(registry_id: int, service: SentinelService) -> dict:
     }
 
 
-__all__ = ["OnboardingBlocked", "import_csv", "list_plant_assets", "score_asset"]
+__all__ = ["DriftBlocked", "OnboardingBlocked", "import_csv", "list_plant_assets",
+           "resolve_profile", "score_asset"]

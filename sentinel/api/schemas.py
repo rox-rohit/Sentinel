@@ -74,12 +74,24 @@ class OnboardingMappingRequest(BaseModel):
     """Customer CSV text plus the source-column -> canonical-field mapping."""
 
     csv_text: str = Field(..., min_length=1)
-    mapping: dict[str, str] = Field(..., description="source column -> canonical target")
+    mapping: dict[str, str] | None = Field(None, description="source column -> canonical target")
+    profile_id: int | None = Field(None, description="Reuse a saved mapping profile")
     source_file: str = Field("upload.csv", max_length=255)
 
 
 class OnboardingImportRequest(OnboardingMappingRequest):
     name: str = Field(..., min_length=1, max_length=120)
+    notes: str | None = Field(None, max_length=500)
+    accept_drift: bool = Field(False, description="Acknowledge detected schema drift")
+
+
+class MappingProfileRequest(BaseModel):
+    """A reusable source/vendor mapping and the schema it was built from."""
+
+    name: str = Field(..., min_length=1, max_length=96)
+    source: str = Field("", max_length=120)
+    mapping: dict[str, str] = Field(..., min_length=1)
+    expected_columns: list[str] = Field(..., min_length=1)
     notes: str | None = Field(None, max_length=500)
 
 
