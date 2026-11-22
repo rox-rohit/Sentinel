@@ -146,10 +146,13 @@ Because the build happens on the app, Kudu keeps the result compressed:
 `output.tar.zst` and `oryx-manifest.toml` stay in `wwwroot` and the container
 runs from an extraction under `/tmp`. Two consequences:
 
-- `startup.sh` starts from the working directory that actually contains
-  `sentinel/` (the `/tmp` extraction), falling back to `wwwroot` only for a
-  decompressed tree. `cd /home/site/wwwroot` unconditionally served the previous
-  deployment's package once a stale tree was left there.
+- the app's startup command is `bash startup.sh`, **relative**. Oryx runs it
+  with the extracted build as the working directory; the absolute
+  `/bin/bash /home/site/wwwroot/startup.sh` form resolves to the script left in
+  `wwwroot` and starts the previous deployment. The deploy job re-asserts the
+  setting on every run (`az webapp config set --startup-file 'bash startup.sh'`),
+  and `startup.sh` itself resolves the run root from Oryx's exported
+  `PYTHONPATH` as a second guard.
 - the deploy step passes `--clean true`, so the old tree is removed rather than
   imported; and it deploys with `--async true` and then waits for a new
   successful deployment record, because the synchronous call is cut off by

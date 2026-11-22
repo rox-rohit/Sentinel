@@ -152,6 +152,21 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # Oryx runs the startup command from the extracted build under /tmp, so
+      # the command must be relative. An absolute /home/site/wwwroot path runs
+      # whatever script is left in wwwroot, which is the previous deployment.
+      - name: Ensure the Oryx startup command
+        run: |
+          set -euo pipefail
+          current="$(az webapp config show -g "$RESOURCE_GROUP" -n "$API_APP_NAME" --query appCommandLine -o tsv)"
+          if [ "$current" = "bash startup.sh" ]; then
+            echo "startup command already relative"
+          else
+            az webapp config set -g "$RESOURCE_GROUP" -n "$API_APP_NAME" \
+              --startup-file "bash startup.sh" -o none
+            echo "startup command set to 'bash startup.sh' (was '${current:-default}')"
+          fi
+
       - name: Build console against the hosted API
         env:
           VITE_API_BASE_URL: ${{ env.API_BASE_URL }}
