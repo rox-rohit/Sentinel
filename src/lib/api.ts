@@ -1,4 +1,3 @@
-import snapshotJson from '../generated/snapshot.json'
 import type {
   AlertInbox,
   AlertLifecycle,
@@ -14,7 +13,20 @@ import type {
   Snapshot,
 } from '../data/types'
 
-export const SNAPSHOT = snapshotJson as unknown as Snapshot
+/**
+ * The snapshot is a build artifact bundled as its own chunk. Loading it on
+ * demand keeps the entry bundle small and lets the browser cache it apart from
+ * the application shell.
+ */
+let snapshotCache: Snapshot | null = null
+
+export async function loadSnapshot(): Promise<Snapshot> {
+  if (!snapshotCache) {
+    const module = await import('../generated/snapshot.json')
+    snapshotCache = module.default as unknown as Snapshot
+  }
+  return snapshotCache
+}
 
 export const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
@@ -28,11 +40,39 @@ export interface DatasetState {
   error: string | null
 }
 
-async function getJson<T>(path: string, timeoutMs = 12000): Promise<T> {
+const API_KEY_STORAGE = 'sentinel.apiKey'
+
+/** Platform API key, held only for this browser session. */
+export function storedApiKey(): string | null {
+  try {
+    return window.sessionStorage.getItem(API_KEY_STORAGE)
+  } catch {
+    return null
+  }
+}
+
+export function setApiKey(key: string | null): void {
+  try {
+    if (key && key.trim()) window.sessionStorage.setItem(API_KEY_STORAGE, key.trim())
+    else window.sessionStorage.removeItem(API_KEY_STORAGE)
+  } catch {
+    // Storage can be blocked; requests simply go out without a key.
+  }
+}
+
+function authHeaders(): Record<string, string> {
+  const key = storedApiKey()
+  return key ? { 'X-API-Key': key } : {}
+}
+
+export async function getJson<T>(path: string, timeoutMs = 12000): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetch(`${API_BASE}${path}`, { signal: controller.signal })
+    const response = await fetch(`${API_BASE}${path}`, {
+      signal: controller.signal,
+      headers: authHeaders(),
+    })
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
     return (await response.json()) as T
   } finally {
@@ -48,6 +88,7 @@ async function getJson<T>(path: string, timeoutMs = 12000): Promise<T> {
  * static preview); the UI always shows which source is active.
  */
 export async function loadDataset(): Promise<DatasetState> {
+  const snapshot = await loadSnapshot()
   try {
     const status = await getJson<{ status: string; build_version: string }>('/health')
     if (status.status !== 'ok') throw new Error('API reported a degraded state')
@@ -64,8 +105,8 @@ export async function loadDataset(): Promise<DatasetState> {
         getJson<Snapshot['forecast']>('/forecast'),
       ])
     const data: Snapshot = {
-      ...SNAPSHOT,
-      fleet: { ...fleet, health_weights: SNAPSHOT.fleet.health_weights },
+      ...snapshot,
+      fleet: { ...fleet, health_weights: snapshot.fleet.health_weights },
       assets: assets.assets,
       alerts: alerts.alerts,
       predictive,
@@ -78,7 +119,7 @@ export async function loadDataset(): Promise<DatasetState> {
     return { data, source: 'live', error: null }
   } catch (error) {
     return {
-      data: SNAPSHOT,
+      data: snapshot,
       source: 'snapshot',
       error: error instanceof Error ? error.message : 'API unreachable',
     }
@@ -127,7 +168,9 @@ export async function compareScenarios(ids: number[]): Promise<ScenarioCompariso
 }
 
 export async function deleteScenario(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE}/maintenance/scenarios/${id}`, { method: 'DELETE' })
+  const response = await fetch(`${API_BASE}/maintenance/scenarios/${id}`, {
+    method: 'DELETE', headers: authHeaders(),
+  })
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
     throw new Error(payload.error?.message ?? `Request failed (${response.status})`)
@@ -137,7 +180,7 @@ export async function deleteScenario(id: number): Promise<void> {
 export async function inspectPlantCsv(text: string, filename = 'upload.csv') {
   const response = await fetch(
     `${API_BASE}/onboarding/inspect?filename=${encodeURIComponent(filename)}`,
-    { method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: text },
+    { method: 'POST', headers: { 'Content-Type': 'text/csv', ...authHeaders() }, body: text },
   )
   const payload = (await response.json()) as OnboardingInspection & { error?: { message?: string } }
   if (!response.ok) throw new Error(payload.error?.message ?? `Request failed (${response.status})`)
@@ -203,7 +246,7 @@ export async function applyMappingProfile(
 ): Promise<{ profile_id: number; mapping: Record<string, string>; drift: import('../data/types').SchemaDrift }> {
   const response = await fetch(`${API_BASE}/onboarding/profiles/${id}/apply`, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/csv' },
+    headers: { 'Content-Type': 'text/csv', ...authHeaders() },
     body: csvText,
   })
   const payload = await response.json() as {
@@ -217,7 +260,9 @@ export async function applyMappingProfile(
 }
 
 export async function deleteMappingProfile(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE}/onboarding/profiles/${id}`, { method: 'DELETE' })
+  const response = await fetch(`${API_BASE}/onboarding/profiles/${id}`, {
+    method: 'DELETE', headers: authHeaders(),
+  })
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
     throw new Error(payload.error?.message ?? `Request failed (${response.status})`)
@@ -246,10 +291,42 @@ export async function scorePlantAsset(id: number) {
   }>(`/onboarding/assets/${id}/score`, {})
 }
 
-async function postJson<T = Record<string, unknown>>(path: string, body: unknown): Promise<T> {
+/** One request helper for the versioned API: base URL, API key, JSON errors. */
+export async function requestJson<T>(
+  path: string,
+  init: {
+    method?: string
+    body?: unknown
+    headers?: Record<string, string>
+    timeoutMs?: number
+  } = {},
+): Promise<T> {
+  const { method = 'GET', body, headers = {}, timeoutMs = 12000 } = init
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...authHeaders(), ...headers },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    })
+    const payload = (await response.json().catch(() => ({}))) as T & {
+      error?: { message?: string }
+    }
+    if (!response.ok) {
+      throw new Error(payload.error?.message ?? `Request failed (${response.status})`)
+    }
+    return payload
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+export async function postJson<T = Record<string, unknown>>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   })
   const payload = (await response.json()) as T & { error?: { message?: string } }

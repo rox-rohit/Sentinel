@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Bell,
   ChevronRight,
+  Cpu,
   Database,
   FlaskConical,
   Gauge,
@@ -22,10 +23,12 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
+import { AssistantDock } from '../assistant/AssistantDock'
 import type { DatasetState } from '../../lib/api'
 import { cx } from '../../lib/cx'
 import { navigate, usePath } from '../../lib/router'
 import { relativeTime } from '../../lib/format'
+import { ThemeMenu } from './ThemeMenu'
 
 const NAV = [
   {
@@ -33,6 +36,7 @@ const NAV = [
     items: [
       { href: '/', label: 'Fleet Overview', icon: LayoutDashboard },
       { href: '/live', label: 'Live Monitoring', icon: Wifi },
+      { href: '/twins', label: 'Digital Twin', icon: Cpu },
       { href: '/assets', label: 'Machine Intelligence', icon: Gauge },
       { href: '/predictive', label: 'Predictive Analytics', icon: Activity },
       { href: '/anomalies', label: 'Anomaly Centre', icon: AlertTriangle },
@@ -62,6 +66,7 @@ const NAV = [
 const TITLES: Record<string, string> = {
   '/': 'Fleet Overview',
   '/live': 'Live Monitoring',
+  '/twins': 'Machine Twin Studio',
   '/assets': 'Machine Intelligence',
   '/predictive': 'Predictive Analytics',
   '/anomalies': 'Anomaly Detection Centre',
@@ -104,7 +109,7 @@ export function AppShell({
         )}
       >
         <div className="flex items-center gap-2.5 px-4 py-4">
-          <div className="relative grid size-8 place-items-center rounded-[9px] border border-[rgb(53_214_242_/_0.35)] bg-[rgb(53_214_242_/_0.08)]">
+          <div className="relative grid size-8 place-items-center rounded-[9px] border border-[var(--accent-line)] bg-[var(--accent-soft)]">
             <ShieldCheck className="size-4 text-[var(--color-accent)]" />
           </div>
           <div className="leading-tight">
@@ -116,7 +121,7 @@ export function AppShell({
           </button>
         </div>
 
-        <div className="mx-3 mb-3 rounded-[9px] border border-[var(--color-line)] bg-white/[0.02] px-3 py-2">
+        <div className="mx-3 mb-3 rounded-[9px] border border-[var(--color-line)] bg-[var(--overlay-1)] px-3 py-2">
           <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.1em] text-faint">
             <span>Active fleet</span>
             <span className="numeric text-[var(--color-accent)]">{snapshot.fleet.summary.total}</span>
@@ -142,8 +147,8 @@ export function AppShell({
                         className={cx(
                           'group flex w-full items-center gap-2.5 rounded-[8px] px-3 py-[7px] text-left text-[12px] transition-colors',
                           active
-                            ? 'bg-[rgb(53_214_242_/_0.08)] text-fg'
-                            : 'text-muted hover:bg-white/[0.03] hover:text-fg',
+                            ? 'bg-[var(--accent-soft)] text-fg'
+                            : 'text-muted hover:bg-[var(--overlay-2)] hover:text-fg',
                         )}
                       >
                         <item.icon className={cx('size-[15px]', active ? 'text-[var(--color-accent)]' : 'text-faint group-hover:text-muted')} />
@@ -171,7 +176,7 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-[54px] items-center gap-3 border-b border-[var(--color-line)] bg-[rgb(7_9_12_/_0.88)] px-4 backdrop-blur">
+        <header className="sticky top-0 z-20 flex h-[54px] items-center gap-3 border-b border-[var(--color-line)] bg-[var(--header-bg)] px-4 backdrop-blur">
           <button className="text-muted lg:hidden" onClick={() => setOpen(true)} aria-label="Open navigation">
             <Menu className="size-5" />
           </button>
@@ -185,14 +190,15 @@ export function AppShell({
               className={cx(
                 'hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] sm:inline-flex',
                 live
-                  ? 'border-[rgb(45_212_167_/_0.3)] bg-[rgb(45_212_167_/_0.08)] text-[var(--color-good)]'
-                  : 'border-[var(--color-line-strong)] bg-white/[0.03] text-muted',
+                  ? 'border-[var(--good-line)] bg-[var(--good-soft)] text-[var(--color-good)]'
+                  : 'border-[var(--color-line-strong)] bg-[var(--overlay-1)] text-muted',
               )}
               title={live ? 'Reading live FastAPI responses' : `API unavailable (${dataset.error}). Showing exported build artifacts.`}
             >
               <span className={cx('size-1.5 rounded-full bg-current', live && 'animate-[pulse-soft_2.6s_ease-in-out_infinite]')} />
-              {live ? 'Live API' : 'Artifact snapshot'}
+              {live ? 'Live API' : 'Snapshot'}
             </span>
+            <ThemeMenu />
             <button
               onClick={refresh}
               className="flex items-center gap-1.5 rounded-[7px] border border-[var(--color-line)] px-2.5 py-1.5 text-[11px] text-muted transition-colors hover:border-[var(--color-line-strong)] hover:text-fg"
@@ -209,6 +215,8 @@ export function AppShell({
         </header>
         <main className="min-w-0 flex-1 px-4 py-4 lg:px-6 lg:py-5">{children}</main>
       </div>
+
+      <AssistantDock />
     </div>
   )
 }
