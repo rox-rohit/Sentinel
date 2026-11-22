@@ -32,7 +32,7 @@ export function Explainability() {
                   <span className="truncate text-muted">{entry.label}</span>
                   <span className="numeric shrink-0 text-fg">{number(entry.importance, 3)}</span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
+                <div className="h-1.5 overflow-hidden rounded-full bg-[var(--track)]">
                   <div className="h-full rounded-full bg-[var(--color-accent)]"
                     style={{ width: `${Math.max(2, (entry.importance / maxImportance) * 100)}%` }} />
                 </div>
@@ -56,7 +56,7 @@ export function Explainability() {
                   onClick={() => setSampleIndex(index)}
                   className={`rounded-[5px] px-2 py-1 text-[10px] ${
                     index === sampleIndex
-                      ? 'bg-[rgb(53_214_242_/_0.12)] text-[var(--color-accent)]'
+                      ? 'bg-[var(--accent-soft)] text-[var(--color-accent)]'
                       : 'text-faint hover:text-fg'
                   }`}
                 >
@@ -102,7 +102,7 @@ export function Explainability() {
                           {positive ? '+' : ''}{contribution.contribution.toFixed(3)}
                         </span>
                       </div>
-                      <div className="relative h-2 rounded-full bg-white/[0.04]">
+                      <div className="relative h-2 rounded-full bg-[var(--overlay-2)]">
                         <div className="absolute inset-y-0 left-1/2 w-px bg-white/10" />
                         <div
                           className="absolute inset-y-0 rounded-full"

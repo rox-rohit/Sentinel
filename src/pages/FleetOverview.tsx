@@ -191,7 +191,7 @@ export function FleetOverview() {
                       <span className="capitalize text-muted">{entry.category}</span>
                       <span className="numeric text-fg">{entry.count} <span className="text-faint">({share.toFixed(0)}%)</span></span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-[var(--track)]">
                       <div className="h-full rounded-full" style={{
                         width: `${Math.max(1, share)}%`,
                         background: CATEGORY_COLOR[entry.category],

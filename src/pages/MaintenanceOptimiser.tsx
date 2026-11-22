@@ -83,7 +83,7 @@ export function MaintenanceOptimiser() {
           xKey="strategy"
           yKey="cost"
           height={210}
-          color="#35d6f2"
+          color="var(--chart-1)"
         />
         <div className="mt-3 grid gap-2 md:grid-cols-3">
           {plan.scenarios.map((scenario) => (
@@ -129,13 +129,13 @@ export function MaintenanceOptimiser() {
                 value={budget}
                 onChange={(event) => setBudget(event.target.value)}
                 inputMode="numeric"
-                className="w-full rounded-[7px] border border-[var(--color-line)] bg-white/[0.02] px-3 py-1.5 text-[12px] outline-none focus:border-[rgb(53_214_242_/_0.4)]"
+                className="w-full rounded-[7px] border border-[var(--color-line)] bg-[var(--overlay-1)] px-3 py-1.5 text-[12px] outline-none focus:border-[var(--accent-line)]"
                 placeholder="Budget"
               />
               <button
                 onClick={recompute}
                 disabled={status === 'running'}
-                className="shrink-0 rounded-[7px] border border-[rgb(53_214_242_/_0.35)] bg-[rgb(53_214_242_/_0.1)] px-3 py-1.5 text-[11px] text-[var(--color-accent)] transition-colors hover:bg-[rgb(53_214_242_/_0.16)] disabled:opacity-50"
+                className="shrink-0 rounded-[7px] border border-[var(--accent-line)] bg-[var(--accent-soft)] px-3 py-1.5 text-[11px] text-[var(--color-accent)] transition-colors hover:bg-[var(--accent-soft-strong)] disabled:opacity-50"
               >
                 {status === 'running' ? 'Solving…' : 'Optimise'}
               </button>

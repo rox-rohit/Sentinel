@@ -8,7 +8,7 @@ import { Cell, Row, Table } from '../components/ui/Table'
 import { useData } from '../lib/data-context'
 import { number, percent } from '../lib/format'
 
-const CURVE_COLORS = ['#35d6f2', '#3b82f6', '#f5a524']
+const CURVE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)']
 
 export function HistoricalAnalytics() {
   const { data } = useData()
@@ -41,7 +41,7 @@ export function HistoricalAnalytics() {
             {(['cmapss', 'ai4i'] as const).map((option) => (
               <button key={option} onClick={() => setDataset(option)}
                 className={`rounded-[5px] px-2.5 py-1 text-[10.5px] uppercase ${
-                  dataset === option ? 'bg-[rgb(53_214_242_/_0.12)] text-[var(--color-accent)]' : 'text-faint hover:text-fg'
+                  dataset === option ? 'bg-[var(--accent-soft)] text-[var(--color-accent)]' : 'text-faint hover:text-fg'
                 }`}>
                 {option}
               </button>
@@ -99,7 +99,7 @@ export function HistoricalAnalytics() {
               xKey="unit"
               yKey="value"
               height={230}
-              color="#3b82f6"
+              color="var(--chart-2)"
             />
           </Panel>
         )}

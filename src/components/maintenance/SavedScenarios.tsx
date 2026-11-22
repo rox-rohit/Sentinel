@@ -134,12 +134,12 @@ export function SavedScenarios({ plan, live }: {
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder={`Name this run (${money(plan.budget)} budget)`}
-              className="min-w-[220px] flex-1 rounded-[7px] border border-[var(--color-line)] bg-white/[0.02] px-3 py-1.5 text-[11.5px] outline-none focus:border-[rgb(53_214_242_/_0.4)]"
+              className="min-w-[220px] flex-1 rounded-[7px] border border-[var(--color-line)] bg-[var(--overlay-1)] px-3 py-1.5 text-[11.5px] outline-none focus:border-[var(--accent-line)]"
             />
             <button
               onClick={() => void handleSave()}
               disabled={busy === 'save'}
-              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[rgb(53_214_242_/_0.35)] bg-[rgb(53_214_242_/_0.1)] px-3 py-1.5 text-[11px] text-[var(--color-accent)] hover:bg-[rgb(53_214_242_/_0.16)] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--accent-line)] bg-[var(--accent-soft)] px-3 py-1.5 text-[11px] text-[var(--color-accent)] hover:bg-[var(--accent-soft-strong)] disabled:opacity-50"
             >
               <Save className="size-3.5" />
               {busy === 'save' ? 'Saving…' : 'Save current plan'}

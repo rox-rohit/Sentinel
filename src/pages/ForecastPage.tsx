@@ -144,8 +144,8 @@ export function ForecastPage() {
               xKey="horizon"
               height={230}
               series={[
-                { key: 'actual', color: '#8b9bab', label: 'Actual' },
-                { key: 'forecast', color: '#35d6f2', label: 'Forecast' },
+                { key: 'actual', color: 'var(--muted)', label: 'Actual' },
+                { key: 'forecast', color: 'var(--chart-1)', label: 'Forecast' },
               ]}
             />
             <p className="mt-1 text-[10.5px] text-muted">

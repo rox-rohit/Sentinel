@@ -45,7 +45,7 @@ export function AnomalyCentre() {
 
       <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         <Panel title="Score distribution" subtitle="Ensemble score across every scored cycle (clipped at 5)">
-          <BarsChart data={histogram} xKey="score" yKey="rows" height={220} color="#35d6f2" />
+          <BarsChart data={histogram} xKey="score" yKey="rows" height={220} color="var(--chart-1)" />
         </Panel>
 
         <Panel title="Most affected sensors" subtitle="How often each channel is among an asset's top deviations">
@@ -58,7 +58,7 @@ export function AnomalyCentre() {
                     <span className="truncate text-muted">{entry.sensor}</span>
                     <span className="numeric text-fg">{entry.assets}</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--track)]">
                     <div className="h-full rounded-full bg-[var(--color-warn)]"
                       style={{ width: `${Math.max(3, (entry.assets / max) * 100)}%` }} />
                   </div>

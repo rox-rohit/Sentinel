@@ -42,7 +42,7 @@ export function PredictiveAnalytics() {
             xKey="horizon"
             yKey="high_risk"
             height={230}
-            color="#f5a524"
+            color="var(--chart-3)"
           />
           <div className="mt-2 grid grid-cols-4 gap-2 text-center">
             {predictive.horizon_curve.map((entry) => (
@@ -64,7 +64,7 @@ export function PredictiveAnalytics() {
                     <span className="text-muted">{band.band}</span>
                     <span className="numeric text-fg">{band.count}</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--track)]">
                     <div className="h-full rounded-full bg-[var(--color-accent)]"
                       style={{ width: `${Math.max(1, (band.count / total) * 100)}%` }} />
                   </div>

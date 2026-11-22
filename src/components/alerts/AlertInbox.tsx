@@ -96,7 +96,7 @@ export function AlertInbox({ fallback, live }: { fallback: Alert[]; live: boolea
                 onClick={() => setFilter(option)}
                 className={`rounded-full px-2.5 py-1 text-[10.5px] capitalize transition ${
                   filter === option
-                    ? 'bg-white/[0.07] text-fg ring-1 ring-inset ring-white/10'
+                    ? 'bg-[var(--overlay-3)] text-fg ring-1 ring-inset ring-[var(--color-line-strong)]'
                     : 'text-muted hover:text-fg'
                 }`}
               >

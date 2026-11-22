@@ -38,7 +38,7 @@ export function Row({ children, onClick, className }: {
       onClick={onClick}
       className={cx(
         'border-b border-[var(--color-line)] last:border-0',
-        onClick && 'cursor-pointer hover:bg-white/[0.025]',
+        onClick && 'cursor-pointer hover:bg-[var(--overlay-1)]',
         className,
       )}
     >

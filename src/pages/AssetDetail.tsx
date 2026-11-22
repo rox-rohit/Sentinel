@@ -81,7 +81,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     return (
       <div className="space-y-4">
         <PageHeader title={`${asset.label} · machine digital twin`} description="Loading telemetry…" />
-        <Note tone="warn">{loadError ?? 'Fetching the full asset record from the inference service.'}</Note>
+        <Note>{loadError ?? 'Fetching the full asset record from the inference service.'}</Note>
       </div>
     )
   }
@@ -161,7 +161,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             <TelemetryChart
               data={telemetry}
               xKey="cycle"
-              series={[{ key: 'value', color: '#35d6f2', label: sensorLabel }]}
+              series={[{ key: 'value', color: 'var(--chart-1)', label: sensorLabel }]}
               height={196}
             />
           </Panel>
@@ -170,7 +170,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Predicted RUL trajectory" subtitle="Model estimate at each recorded cycle">
-          <AreaTrend data={rulTrend} xKey="cycle" yKey="rul" color="#3b82f6" height={190} name="Predicted RUL" />
+          <AreaTrend data={rulTrend} xKey="cycle" yKey="rul" color="var(--chart-2)" height={190} name="Predicted RUL" />
           <div className="mt-2 flex items-center gap-3 text-[10px] text-faint">
             <span>Actual RUL at final recorded cycle: {asset.actual_rul_final ?? 'not labelled'}</span>
           </div>
@@ -180,8 +180,8 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             data={healthTrend}
             xKey="cycle"
             series={[
-              { key: 'health', color: '#2dd4a7', label: 'Health' },
-              { key: 'anomaly', color: '#f5a524', label: 'Anomaly' },
+              { key: 'health', color: 'var(--chart-4)', label: 'Health' },
+              { key: 'anomaly', color: 'var(--chart-3)', label: 'Anomaly' },
             ]}
             height={190}
           />
@@ -218,7 +218,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
                     <span className="text-muted">{entry.label}</span>
                     <span className="numeric text-fg">{entry.z_score > 0 ? '+' : ''}{entry.z_score.toFixed(1)} σ</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--track)]">
                     <div className="h-full rounded-full"
                       style={{
                         width: `${Math.min(100, Math.abs(entry.z_score) * 4)}%`,
@@ -239,7 +239,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             {assetAlerts.length === 0 && <p className="text-[11.5px] text-muted">No alert for this asset.</p>}
             <ul className="space-y-2">
               {assetAlerts.map((alert, index) => (
-                <li key={index} className="rounded-[8px] border border-[var(--color-line)] bg-white/[0.02] px-2.5 py-2">
+                <li key={index} className="rounded-[8px] border border-[var(--color-line)] bg-[var(--overlay-1)] px-2.5 py-2">
                   <div className="flex items-center gap-2">
                     <Badge tone={alert.severity}>{alert.severity}</Badge>
                     <span className="text-[10px] uppercase tracking-[0.08em] text-faint">{alert.kind}</span>
@@ -253,10 +253,14 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         </div>
       </div>
 
-      <Note tone="warn">
-        This is an analytical digital twin built from recorded telemetry and model outputs — not a
-        physics simulation and not a live sensor feed. The RUL band is an empirical residual interval.
-      </Note>
+      <p className="text-[10px] leading-relaxed text-faint">
+        Analytical twin built from recorded telemetry and model outputs. The RUL band is an empirical residual interval;
+        connect a machine to this asset in the{' '}
+        <button onClick={() => navigate('/twins')} className="text-[var(--color-accent)] hover:underline">
+          twin studio
+        </button>{' '}
+        to score incoming samples against the same baseline.
+      </p>
       <div className="flex items-center gap-2 text-[10px] text-faint">
         <Label>Criticality</Label> {asset.criticality} (default) · <Label>Dataset</Label> {asset.dataset} ·
         <Label>Model</Label> {data.predictive.model}

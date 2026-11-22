@@ -7,7 +7,7 @@ export function HealthMeter({ value, className }: { value: number; className?: s
         : value >= 40 ? 'var(--color-warn)'
           : 'var(--color-critical)'
   return (
-    <div className={cx('h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]', className)}>
+    <div className={cx('h-1.5 w-full overflow-hidden rounded-full bg-[var(--track)]', className)}>
       <div
         className="h-full rounded-full transition-[width] duration-500"
         style={{ width: `${Math.max(2, Math.min(100, value))}%`, background: color }}
@@ -20,7 +20,7 @@ export function RiskMeter({ value, className }: { value: number; className?: str
   const pct = Math.max(0, Math.min(1, value)) * 100
   return (
     <div className={cx('flex items-center gap-2', className)}>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--track)]">
         <div
           className="h-full rounded-full"
           style={{
@@ -47,7 +47,7 @@ export function Ring({ value, label, size = 96 }: { value: number; label?: strin
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none"
-          stroke="rgb(148 178 205 / 0.12)" strokeWidth={stroke} />
+          stroke="var(--track-strong)" strokeWidth={stroke} />
         <circle
           cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={stroke}
           strokeLinecap="round" strokeDasharray={circumference}

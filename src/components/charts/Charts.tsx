@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import {
   Area,
   AreaChart,
@@ -17,22 +18,34 @@ import {
 } from 'recharts'
 
 const AXIS = {
-  stroke: 'rgb(139 155 171 / 0.55)',
+  stroke: 'var(--axis)',
   fontSize: 10,
   tickLine: false,
   axisLine: false,
 } as const
 
-const GRID = 'rgb(148 178 205 / 0.07)'
+const GRID = 'var(--grid-line)'
 
 const TOOLTIP_STYLE = {
-  background: '#0d131a',
-  border: '1px solid rgb(148 178 205 / 0.22)',
+  background: 'var(--tooltip-bg)',
+  border: '1px solid var(--tooltip-border)',
   borderRadius: 8,
   fontSize: 11,
-  color: '#e8f0f7',
+  color: 'var(--tooltip-fg)',
   padding: '6px 9px',
 } as const
+
+const LABEL_STYLE = { color: 'var(--muted)' } as const
+
+/**
+ * Long trajectories are thinned for drawing only: every nth point plus the last
+ * one. The data behind the chart is untouched.
+ */
+function thin<T>(data: T[], max = 480): T[] {
+  if (data.length <= max) return data
+  const step = Math.ceil(data.length / max)
+  return data.filter((_, index) => index % step === 0 || index === data.length - 1)
+}
 
 export interface SeriesPoint {
   [key: string]: number | string | null
@@ -55,14 +68,14 @@ export function TelemetryChart({
 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
+      <LineChart data={thin(data)} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
         <CartesianGrid stroke={GRID} vertical={false} />
         <XAxis dataKey={xKey} {...AXIS} />
         <YAxis {...AXIS} width={38} unit={yUnit} />
-        <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#8b9bab' }} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={LABEL_STYLE} />
         {reference && (
-          <ReferenceLine y={reference.y} stroke="rgb(245 165 36 / 0.5)" strokeDasharray="4 4"
-            label={{ value: reference.label, fill: '#f5a524', fontSize: 9, position: 'insideTopRight' }} />
+          <ReferenceLine y={reference.y} stroke="var(--warn)" strokeOpacity={0.55} strokeDasharray="4 4"
+            label={{ value: reference.label, fill: 'var(--warn)', fontSize: 9, position: 'insideTopRight' }} />
         )}
         {series.map((item) => (
           <Line
@@ -85,7 +98,7 @@ export function AreaTrend({
   data,
   xKey,
   yKey,
-  color = '#35d6f2',
+  color = 'var(--chart-1)',
   height = 150,
   name,
 }: {
@@ -96,10 +109,12 @@ export function AreaTrend({
   height?: number
   name?: string
 }) {
-  const gradientId = `grad-${yKey}`
+  // Unique per chart instance: two panels with the same yKey must not share a
+  // gradient id, which silently painted the wrong colour before.
+  const gradientId = `grad-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}-${yKey}`
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 6, right: 8, left: -20, bottom: 0 }}>
+      <AreaChart data={thin(data)} margin={{ top: 6, right: 8, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.32} />
@@ -109,7 +124,7 @@ export function AreaTrend({
         <CartesianGrid stroke={GRID} vertical={false} />
         <XAxis dataKey={xKey} {...AXIS} />
         <YAxis {...AXIS} width={38} />
-        <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#8b9bab' }} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={LABEL_STYLE} />
         <Area type="monotone" dataKey={yKey} name={name ?? yKey} stroke={color} strokeWidth={1.6}
           fill={`url(#${gradientId})`} isAnimationActive={false} />
       </AreaChart>
@@ -122,7 +137,7 @@ export function BarsChart({
   xKey,
   yKey,
   height = 180,
-  color = '#35d6f2',
+  color = 'var(--chart-1)',
   horizontal = false,
 }: {
   data: SeriesPoint[]
@@ -134,7 +149,7 @@ export function BarsChart({
 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout={horizontal ? 'vertical' : 'horizontal'}
+      <BarChart data={thin(data)} layout={horizontal ? 'vertical' : 'horizontal'}
         margin={{ top: 6, right: 12, left: horizontal ? 8 : -22, bottom: 0 }}>
         <CartesianGrid stroke={GRID} vertical={horizontal} horizontal={!horizontal} />
         {horizontal ? (
@@ -148,7 +163,7 @@ export function BarsChart({
             <YAxis {...AXIS} width={38} />
           </>
         )}
-        <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#8b9bab' }} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={LABEL_STYLE} />
         <Bar dataKey={yKey} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false} />
       </BarChart>
     </ResponsiveContainer>
@@ -160,7 +175,7 @@ export function ScatterPlot({
   height = 260,
   xLabel,
   yLabel,
-  color = '#35d6f2',
+  color = 'var(--chart-1)',
 }: {
   data: { x: number; y: number; z?: number; name?: string }[]
   height?: number
@@ -173,12 +188,12 @@ export function ScatterPlot({
       <ScatterChart margin={{ top: 8, right: 12, bottom: 4, left: -14 }}>
         <CartesianGrid stroke={GRID} />
         <XAxis type="number" dataKey="x" name={xLabel} {...AXIS}
-          label={{ value: xLabel, fill: '#5d6b7a', fontSize: 10, position: 'insideBottom', offset: -2 }} />
+          label={{ value: xLabel, fill: 'var(--faint)', fontSize: 10, position: 'insideBottom', offset: -2 }} />
         <YAxis type="number" dataKey="y" name={yLabel} {...AXIS} width={40}
-          label={{ value: yLabel, fill: '#5d6b7a', fontSize: 10, angle: -90, position: 'insideLeft' }} />
+          label={{ value: yLabel, fill: 'var(--faint)', fontSize: 10, angle: -90, position: 'insideLeft' }} />
         <ZAxis type="number" dataKey="z" range={[24, 90]} />
         <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ strokeDasharray: '3 3' }} />
-        <Scatter data={data} fill={color} fillOpacity={0.62} isAnimationActive={false} />
+        <Scatter data={thin(data, 600)} fill={color} fillOpacity={0.62} isAnimationActive={false} />
       </ScatterChart>
     </ResponsiveContainer>
   )

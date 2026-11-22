@@ -43,7 +43,7 @@ export function MachineIntelligence() {
               onClick={() => setFilter(option)}
               className={`rounded-[7px] border px-2.5 py-1 text-[11px] capitalize transition-colors ${
                 filter === option
-                  ? 'border-[rgb(53_214_242_/_0.35)] bg-[rgb(53_214_242_/_0.08)] text-[var(--color-accent)]'
+                  ? 'border-[var(--accent-line)] bg-[var(--accent-soft)] text-[var(--color-accent)]'
                   : 'border-[var(--color-line)] text-muted hover:text-fg'
               }`}
             >
@@ -54,7 +54,7 @@ export function MachineIntelligence() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search unit…"
-            className="ml-auto w-40 rounded-[7px] border border-[var(--color-line)] bg-white/[0.02] px-2.5 py-1 text-[11px] outline-none placeholder:text-faint focus:border-[rgb(53_214_242_/_0.4)]"
+            className="ml-auto w-40 rounded-[7px] border border-[var(--color-line)] bg-[var(--overlay-1)] px-2.5 py-1 text-[11px] outline-none placeholder:text-faint focus:border-[var(--accent-line)]"
           />
         </div>
       </Panel>

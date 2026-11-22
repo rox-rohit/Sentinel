@@ -317,19 +317,19 @@ export function DataOnboarding() {
               }}
               placeholder={'engine_id,cycle,T24,P24,Nf,…\nTAG-01,1,641.2,553.1,2388,…'}
               spellCheck={false}
-              className="h-40 w-full resize-y rounded-[7px] border border-[var(--color-line)] bg-black/20 px-3 py-2 font-mono text-[10.5px] leading-relaxed outline-none focus:border-[rgb(53_214_242_/_0.4)]"
+              className="h-40 w-full resize-y rounded-[7px] border border-[var(--color-line)] bg-[var(--code-bg)] px-3 py-2 font-mono text-[10.5px] leading-relaxed outline-none focus:border-[var(--accent-line)]"
             />
             <div className="flex flex-wrap items-center gap-2">
               <input
                 value={filename}
                 onChange={(event) => setFilename(event.target.value)}
                 aria-label="Source filename"
-                className="w-40 rounded-[7px] border border-[var(--color-line)] bg-white/[0.02] px-2.5 py-1.5 text-[11px] outline-none"
+                className="w-40 rounded-[7px] border border-[var(--color-line)] bg-[var(--overlay-1)] px-2.5 py-1.5 text-[11px] outline-none"
               />
               <button
                 onClick={() => void handleInspect()}
                 disabled={!live || !csvText.trim() || busy === 'inspect'}
-                className="inline-flex items-center gap-1.5 rounded-[7px] border border-[rgb(53_214_242_/_0.35)] bg-[rgb(53_214_242_/_0.1)] px-3 py-1.5 text-[11px] text-[var(--color-accent)] hover:bg-[rgb(53_214_242_/_0.16)] disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--accent-line)] bg-[var(--accent-soft)] px-3 py-1.5 text-[11px] text-[var(--color-accent)] hover:bg-[var(--accent-soft-strong)] disabled:opacity-40"
               >
                 <PlugZap className="size-3.5" />
                 {busy === 'inspect' ? 'Inspecting…' : 'Inspect columns'}
@@ -374,7 +374,7 @@ export function DataOnboarding() {
                 value={profileName}
                 onChange={(event) => setProfileName(event.target.value)}
                 placeholder="Profile name (e.g. Vendor A monthly export)"
-                className="min-w-[220px] flex-1 rounded-[7px] border border-[var(--color-line)] bg-white/[0.02] px-3 py-1.5 text-[11.5px] outline-none"
+                className="min-w-[220px] flex-1 rounded-[7px] border border-[var(--color-line)] bg-[var(--overlay-1)] px-3 py-1.5 text-[11.5px] outline-none"
               />
               <button
                 onClick={() => void handleSaveProfile()}
@@ -498,7 +498,7 @@ export function DataOnboarding() {
                   <select
                     value={mapping[column.source] ?? ''}
                     onChange={(event) => updateMapping(column.source, event.target.value)}
-                    className="rounded-[6px] border border-[var(--color-line)] bg-[#11161b] px-2 py-1 text-[11px] text-fg outline-none"
+                    className="rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-2)] px-2 py-1 text-[11px] text-fg outline-none"
                   >
                     <option value="">ignore</option>
                     {TARGETS.map((target) => (
@@ -519,12 +519,12 @@ export function DataOnboarding() {
               value={assetName}
               onChange={(event) => setAssetName(event.target.value)}
               placeholder="Asset name (e.g. Compressor A)"
-              className="min-w-[220px] flex-1 rounded-[7px] border border-[var(--color-line)] bg-white/[0.02] px-3 py-1.5 text-[11.5px] outline-none"
+              className="min-w-[220px] flex-1 rounded-[7px] border border-[var(--color-line)] bg-[var(--overlay-1)] px-3 py-1.5 text-[11.5px] outline-none"
             />
             <button
               onClick={() => void handleValidate()}
               disabled={busy === 'validate'}
-              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[rgb(53_214_242_/_0.35)] bg-[rgb(53_214_242_/_0.1)] px-3 py-1.5 text-[11px] text-[var(--color-accent)] disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--accent-line)] bg-[var(--accent-soft)] px-3 py-1.5 text-[11px] text-[var(--color-accent)] disabled:opacity-40"
             >
               <ShieldCheck className="size-3.5" />
               {busy === 'validate' ? 'Validating…' : 'Validate mapping'}
@@ -606,7 +606,7 @@ export function DataOnboarding() {
             <button
               onClick={() => void handleImport()}
               disabled={busy === 'import' || report.readiness === 'blocked' || Boolean(drift?.blocking && !acceptDrift)}
-              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--color-good)]/40 bg-[rgb(45_212_167_/_0.1)] px-3 py-1.5 text-[11px] text-[var(--color-good)] disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--color-good)]/40 bg-[var(--good-soft)] px-3 py-1.5 text-[11px] text-[var(--color-good)] disabled:opacity-40"
             >
               <PlugZap className="size-3.5" />
               {busy === 'import' ? 'Registering…' : 'Validate & register asset'}

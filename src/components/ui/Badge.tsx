@@ -4,15 +4,15 @@ import type { HealthCategory, Severity } from '../../data/types'
 import { cx } from '../../lib/cx'
 
 const SEVERITY_STYLES: Record<string, string> = {
-  healthy: 'bg-[rgb(45_212_167_/_0.12)] text-[var(--color-good)] ring-[rgb(45_212_167_/_0.28)]',
-  normal: 'bg-[rgb(45_212_167_/_0.10)] text-[var(--color-good)] ring-[rgb(45_212_167_/_0.24)]',
-  attention: 'bg-[rgb(125_211_252_/_0.10)] text-[var(--color-accent-3)] ring-[rgb(125_211_252_/_0.25)]',
-  low: 'bg-[rgb(125_211_252_/_0.10)] text-[var(--color-accent-3)] ring-[rgb(125_211_252_/_0.25)]',
-  medium: 'bg-[rgb(245_165_36_/_0.12)] text-[var(--color-warn)] ring-[rgb(245_165_36_/_0.28)]',
-  warning: 'bg-[rgb(245_165_36_/_0.12)] text-[var(--color-warn)] ring-[rgb(245_165_36_/_0.28)]',
-  high: 'bg-[rgb(244_73_93_/_0.12)] text-[var(--color-bad)] ring-[rgb(244_73_93_/_0.30)]',
-  critical: 'bg-[rgb(255_77_109_/_0.14)] text-[var(--color-critical)] ring-[rgb(255_77_109_/_0.34)]',
-  neutral: 'bg-white/[0.04] text-muted ring-white/10',
+  healthy: 'bg-[var(--good-soft)] text-[var(--color-good)] ring-[var(--good-line)]',
+  normal: 'bg-[var(--good-soft)] text-[var(--color-good)] ring-[var(--good-line)]',
+  attention: 'bg-[var(--accent-2-soft)] text-[var(--color-accent-3)] ring-[var(--accent-2-line)]',
+  low: 'bg-[var(--accent-2-soft)] text-[var(--color-accent-3)] ring-[var(--accent-2-line)]',
+  medium: 'bg-[var(--warn-soft)] text-[var(--color-warn)] ring-[var(--warn-line)]',
+  warning: 'bg-[var(--warn-soft)] text-[var(--color-warn)] ring-[var(--warn-line)]',
+  high: 'bg-[var(--bad-soft)] text-[var(--color-bad)] ring-[var(--bad-line)]',
+  critical: 'bg-[var(--critical-soft)] text-[var(--color-critical)] ring-[var(--critical-line)]',
+  neutral: 'bg-[var(--overlay-2)] text-muted ring-[var(--color-line-strong)]',
 }
 
 export function Badge({

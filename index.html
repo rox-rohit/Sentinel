@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
+    <script>
+      // Apply the saved theme before first paint (no flash of the wrong palette).
+      try {
+        var saved = localStorage.getItem('sentinel.theme');
+        if (['sentinel', 'obsidian', 'daylight', 'graphite', 'aurora'].indexOf(saved) >= 0) {
+          document.documentElement.dataset.theme = saved;
+          document.documentElement.style.colorScheme =
+            saved === 'daylight' || saved === 'graphite' ? 'light' : 'dark';
+        }
+      } catch (error) {}
+    </script>
     <meta name="theme-color" content="#07090c" />
     <title>SENTINEL · Industrial Intelligence &amp; Predictive Maintenance</title>
     <meta name="description" content="SENTINEL — industrial intelligence command centre: RUL prediction, anomaly detection, explainable AI and maintenance optimisation on NASA C-MAPSS and UCI AI4I data." />

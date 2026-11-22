@@ -98,7 +98,7 @@ export function DatasetManagement() {
               {(['cmapss', 'ai4i'] as const).map((option) => (
                 <button key={option} onClick={() => setEdaDataset(option)}
                   className={`rounded-[5px] px-2 py-1 text-[10px] uppercase ${
-                    edaDataset === option ? 'bg-[rgb(53_214_242_/_0.12)] text-[var(--color-accent)]' : 'text-faint hover:text-fg'
+                    edaDataset === option ? 'bg-[var(--accent-soft)] text-[var(--color-accent)]' : 'text-faint hover:text-fg'
                   }`}>
                   {option}
                 </button>
@@ -143,8 +143,8 @@ export function DatasetManagement() {
                         className="block size-[22px] rounded-[2px]"
                         style={{
                           background: value >= 0
-                            ? `rgb(53 214 242 / ${Math.abs(value) * 0.85})`
-                            : `rgb(244 73 93 / ${Math.abs(value) * 0.85})`,
+                            ? `color-mix(in srgb, var(--accent) ${Math.round(Math.abs(value) * 85)}%, transparent)`
+                            : `color-mix(in srgb, var(--bad) ${Math.round(Math.abs(value) * 85)}%, transparent)`,
                         }}
                       />
                     ))}
@@ -153,8 +153,8 @@ export function DatasetManagement() {
               </div>
             </div>
             <div className="mt-2 flex items-center gap-3 text-[9.5px] text-faint">
-              <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm bg-[rgb(53_214_242_/_0.7)]" /> positive</span>
-              <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm bg-[rgb(244_73_93_/_0.7)]" /> negative</span>
+              <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm bg-[var(--color-accent)] opacity-70" /> positive</span>
+              <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm bg-[var(--color-bad)] opacity-70" /> negative</span>
               <span>intensity = |r|</span>
             </div>
           </Panel>

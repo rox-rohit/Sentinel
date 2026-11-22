@@ -9,6 +9,7 @@ import { Panel } from '../components/ui/Panel'
 import { Stat } from '../components/ui/Stat'
 import { cx } from '../lib/cx'
 import { useData } from '../lib/data-context'
+import { navigate } from '../lib/router'
 import { number, percent } from '../lib/format'
 import { useReplay } from '../lib/useReplay'
 
@@ -104,7 +105,7 @@ export function LiveMonitoring() {
         }
         actions={
           <>
-            <Badge tone="medium" dot>Simulated replay</Badge>
+            <Badge tone="neutral" dot>Recorded replay</Badge>
             <Badge tone={streamBadge.tone} dot>
               <StatusIcon className="size-3" />
               {streamBadge.text}
@@ -163,8 +164,8 @@ export function LiveMonitoring() {
                   className={cx(
                     'numeric px-2.5 py-1.5 text-[11px] transition-colors',
                     speed === value
-                      ? 'bg-[rgb(53_214_242_/_0.12)] text-[var(--color-accent)]'
-                      : 'text-muted hover:bg-white/[0.03] hover:text-fg',
+                      ? 'bg-[var(--accent-soft)] text-[var(--color-accent)]'
+                      : 'text-muted hover:bg-[var(--overlay-2)] hover:text-fg',
                   )}
                 >
                   {value}×
@@ -180,7 +181,7 @@ export function LiveMonitoring() {
                 {latest ? `${latest.cycle} / ${meta?.total_cycles ?? latest.total_cycles} cycles` : 'waiting for frames'}
               </span>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--track)]">
               <div
                 className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-200"
                 style={{ width: `${progress}%` }}
@@ -233,10 +234,10 @@ export function LiveMonitoring() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="RUL estimate" subtitle="Model prediction per recorded cycle">
-          <AreaTrend data={chartData} xKey="cycle" yKey="rul" color="#35d6f2" height={170} name="RUL" />
+          <AreaTrend data={chartData} xKey="cycle" yKey="rul" color="var(--chart-1)" height={170} name="RUL" />
         </Panel>
         <Panel title="Health score" subtitle="Transparent weighted score per cycle">
-          <AreaTrend data={chartData} xKey="cycle" yKey="health" color="#2dd4a7" height={170} name="Health" />
+          <AreaTrend data={chartData} xKey="cycle" yKey="health" color="var(--chart-4)" height={170} name="Health" />
         </Panel>
       </div>
 
@@ -251,7 +252,7 @@ export function LiveMonitoring() {
             height={190}
             series={visibleSensors.map((sensor, index) => ({
               key: `sensor_${sensor.key}`,
-              color: index === 0 ? '#35d6f2' : '#f5a524',
+              color: index === 0 ? 'var(--chart-1)' : 'var(--chart-3)',
               label: sensor.key.toUpperCase(),
             }))}
           />
@@ -283,13 +284,16 @@ export function LiveMonitoring() {
         </Panel>
       </div>
 
-      <Note tone="warn">
-        {meta?.disclaimer ??
-          'Simulated replay of recorded data. No live sensor, MQTT or PLC connection exists, and no frame is generated or randomised.'}{' '}
+      <p className="text-[10px] leading-relaxed text-faint">
+        {meta?.source ?? 'Recorded C-MAPSS trajectory replayed from the build artifact.'}{' '}
         {mode === 'local'
-          ? 'This session reads the exported artifact series because the replay API is unavailable.'
-          : 'Frames and estimates come from the build artifact over the API WebSocket.'}
-      </Note>
+          ? 'Artifact series in use; the replay API is not connected.'
+          : 'Frames and estimates are served over the API WebSocket.'}{' '}
+        Gateway and manual feeds live in the{' '}
+        <button onClick={() => navigate('/twins')} className="text-[var(--color-accent)] hover:underline">
+          machine twin studio
+        </button>.
+      </p>
     </div>
   )
 }

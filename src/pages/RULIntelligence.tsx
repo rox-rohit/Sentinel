@@ -41,7 +41,7 @@ export function RULIntelligence() {
             height={270}
             xLabel="Actual RUL (cycles)"
             yLabel="Predicted RUL"
-            color="#35d6f2"
+            color="var(--chart-1)"
           />
           <p className="mt-1 text-[10.5px] text-muted">
             Points on the diagonal are exact. Errors above the diagonal are early (conservative) predictions.

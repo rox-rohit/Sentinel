@@ -139,7 +139,7 @@ export function ModelLaboratory() {
           yKey="psi"
           horizontal
           height={260}
-          color="#f5a524"
+          color="var(--chart-3)"
         />
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[10.5px] text-muted">
           <span>Overall: <Badge tone={data.drift.overall_status === 'drift' ? 'medium' : 'healthy'}>{data.drift.overall_status}</Badge></span>

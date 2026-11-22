@@ -27,15 +27,15 @@ export function PageHeader({
   )
 }
 
-export function Note({ children, tone = 'default' }: { children: ReactNode; tone?: 'default' | 'warn' }) {
+/**
+ * A quiet aside. It deliberately carries no amber/alert styling: operational
+ * notices belong in the status chips, and long caveat callouts read as noise.
+ * The `tone` prop is accepted for existing call sites and no longer changes the
+ * rendering.
+ */
+export function Note({ children }: { children: ReactNode; tone?: 'default' | 'warn' }) {
   return (
-    <p
-      className={
-        tone === 'warn'
-          ? 'rounded-[8px] border border-[rgb(245_165_36_/_0.22)] bg-[rgb(245_165_36_/_0.06)] px-3 py-2 text-[11px] leading-relaxed text-[#e8c58a]'
-          : 'rounded-[8px] border border-[var(--color-line)] bg-white/[0.02] px-3 py-2 text-[11px] leading-relaxed text-muted'
-      }
-    >
+    <p className="rounded-[8px] border border-[var(--color-line)] bg-[var(--overlay-1)] px-3 py-2 text-[11px] leading-relaxed text-muted">
       {children}
     </p>
   )
