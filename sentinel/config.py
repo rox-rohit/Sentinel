@@ -33,6 +33,13 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _database_url() -> str:
     """Accept hosted Postgres URLs and route them through psycopg 3."""
     raw = os.environ.get(
@@ -133,6 +140,9 @@ class Settings:
         "SENTINEL_CORS_ORIGIN_REGEX", r"http://(localhost|127\.0\.0\.1):\d+"
     )
     api_key: str | None = os.environ.get("SENTINEL_API_KEY") or None
+    # Fail closed: a deployment can require a key even when it is forgotten.
+    require_api_key: bool = _env_bool("SENTINEL_REQUIRE_API_KEY")
+    rate_limit_per_minute: int = _env_int("SENTINEL_RATE_LIMIT_PER_MINUTE", 300)
     seed_db: str | None = os.environ.get("SENTINEL_SEED_DB") or None
 
     def ensure_dirs(self) -> None:

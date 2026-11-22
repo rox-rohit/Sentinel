@@ -13,10 +13,12 @@ from fastapi.responses import JSONResponse
 
 from sentinel import __version__
 from sentinel.api.routes import ROUTERS
+from sentinel.api.security import HardeningMiddleware
 from sentinel.config import settings
 from sentinel.inference.service import ArtifactUnavailable
 from sentinel.logging_setup import get_logger
 from sentinel.store.db import init_db
+from sentinel.twins.autofeed import feeder
 
 log = get_logger("api")
 
@@ -39,9 +41,13 @@ app.add_middleware(
     # hosted deployments add their exact origin via SENTINEL_CORS_ORIGINS.
     allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "X-API-Key"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key", "X-Device-Token"],
 )
+
+# Outermost middleware: body cap, rate limit and security headers on every
+# response, including error and preflight responses.
+app.add_middleware(HardeningMiddleware)
 
 
 @app.exception_handler(ArtifactUnavailable)
@@ -86,6 +92,12 @@ for router in ROUTERS:
 def init_store() -> None:
     """Prepare the operational store before the first request is served."""
     init_db()
+
+
+@app.on_event("shutdown")
+def stop_feeds() -> None:
+    """Stop twin auto-feed threads so a reload does not leak workers."""
+    feeder.stop_all()
 
 
 @app.get("/", include_in_schema=False)
