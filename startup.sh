@@ -11,10 +11,27 @@
 # Running from the wrong one serves the previous deployment's code.
 set -euo pipefail
 
-APP_ROOT="$(pwd)"
-if [ ! -d "$APP_ROOT/sentinel" ]; then
-  APP_ROOT=/home/site/wwwroot
-fi
+# Oryx exports the extracted build's site-packages; its app path is the prefix
+# above `antenv/lib/python3.x/site-packages`. Prefer that over the working
+# directory and wwwroot, which can still hold the previous deployment's tree.
+find_app_root() {
+  local candidate
+  if [ -n "${PYTHONPATH:-}" ]; then
+    candidate="$(printf '%s' "${PYTHONPATH%%:*}" \
+      | sed -E 's#/antenv/lib/python3[^/]*/site-packages$##')"
+    if [ -n "$candidate" ] && [ -d "$candidate/sentinel" ]; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  fi
+  if [ -d "$(pwd)/sentinel" ]; then
+    printf '%s' "$(pwd)"
+    return 0
+  fi
+  printf '%s' /home/site/wwwroot
+}
+
+APP_ROOT="$(find_app_root)"
 cd "$APP_ROOT"
 
 DEBUG="$APP_ROOT/startup-debug.log"
