@@ -531,9 +531,13 @@ write`), signs in with `azure/login@v2` using `AZURE_CLIENT_ID`,
 `az webapp deploy --type zip` over ARM. The identity is the
 `sentinel-github-deploy` app registration: a service principal with
 **Contributor** on `sentinel-rg` only, and a federated credential `github-main`
-whose subject is `repo:rox-rohit/Sentinel:ref:refs/heads/main` (issuer
+whose subject is
+`repo:rox-rohit@108341398/Sentinel@1458503700:ref:refs/heads/main` (issuer
 `https://token.actions.githubusercontent.com`, audience
-`api://AzureADTokenExchange`). No client secret exists. The console keeps the
+`api://AzureADTokenExchange`). The subject includes GitHub's immutable owner
+and repository ids: the account is renamed, so the plain
+`repo:owner/repo:ref:refs/heads/main` form is rejected with `AADSTS700213`.
+No client secret exists. The console keeps the
 Static Web Apps deployment token, which is independent of the API app's
 publishing policy.
 
@@ -547,8 +551,9 @@ Kudu (no tested build, no smoke check, the state D-019 was written to end).
 
 **Consequences.** Deploy authorization is bound to a branch and repository; a
 push from anywhere else has no valid federated subject. Rotating nothing is
-required, but renaming the repository, changing the default branch or moving
-the resource group breaks the subject or the role scope and needs the federated
-credential updated. `az webapp deploy` restarts the app and waits for Oryx to
+required, but changing the default branch or moving the resource group breaks
+the subject or the role scope and needs the federated credential updated; the
+immutable ids make the subject stable across future renames, but a transferred
+repository changes them. `az webapp deploy` restarts the app and waits for Oryx to
 rebuild `requirements.txt`, so the deploy step plus the `/health` retry is the
 longest part of the run.

@@ -91,7 +91,14 @@ token instead and zip-deploys through ARM. The identity is an app registration
 - a federated credential named `github-main` with issuer
   `https://token.actions.githubusercontent.com`, audience
   `api://AzureADTokenExchange` and subject
-  `repo:rox-rohit/Sentinel:ref:refs/heads/main`.
+  `repo:rox-rohit@108341398/Sentinel@1458503700:ref:refs/heads/main`.
+
+The subject carries GitHub's immutable owner and repository ids because the
+owner account has been renamed. The plain `repo:owner/repo:ref:refs/heads/main`
+form does not match: Entra ID answers `AADSTS700213` and the job stops at
+`Sign in to Azure with OIDC`. If the repository or owner is renamed again, read
+the subject from that error message and update the credential with
+`az ad app federated-credential update`.
 
 No client secret exists, so there is nothing to rotate; the federated subject
 is the authorization. A deploy from any other branch or repository is refused by
@@ -105,7 +112,7 @@ az role assignment create --assignee <appId> --role Contributor \
 az ad app federated-credential create --id <appId> --parameters '{
   "name": "github-main",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:rox-rohit/Sentinel:ref:refs/heads/main",
+  "subject": "repo:rox-rohit@108341398/Sentinel@1458503700:ref:refs/heads/main",
   "audiences": ["api://AzureADTokenExchange"]}'
 ```
 
