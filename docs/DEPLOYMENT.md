@@ -71,21 +71,47 @@ the ones the tests ran against.
 
 ### Required repository secrets
 
-Settings → Secrets and variables → Actions → **Repository secrets**. Nothing else
-is needed: hosts and app names are plain `env` values in the workflow.
+Settings → Secrets and variables → Actions → **Repository secrets**. Hosts, app
+names and the resource group are plain `env` values in the workflow.
 
-| Secret | Used by | How to obtain it |
+| Secret | Used by | Value |
 |---|---|---|
-| `AZURE_API_PUBLISH_PROFILE` | `azure/webapps-deploy@v3` | `az webapp deployment list-publishing-profiles -g sentinel-rg -n sentinel-api-l1fit9 --xml` |
+| `AZURE_CLIENT_ID` | `azure/login@v2` | Application (client) id of the `sentinel-github-deploy` app registration |
+| `AZURE_TENANT_ID` | `azure/login@v2` | Entra tenant id |
+| `AZURE_SUBSCRIPTION_ID` | `azure/login@v2` | Subscription id that holds `sentinel-rg` |
 | `AZURE_STATIC_WEB_APPS_API_TOKEN` | `Azure/static-web-apps-deploy@v1` | `az staticwebapp secrets list -g sentinel-rg -n sentinel-console-l1fit9 --query properties.apiKey -o tsv` |
 
-Both commands print deployment credentials. Paste them into the secret form, never
-into a commit, a log or a workflow file. Resetting either credential, or
-recreating the resource, invalidates the secret: update it immediately, because
-the deploy job reads both at run time and fails before deploying if either is
-missing.
+The API app has **SCM basic auth disabled**
+(`basicPublishingCredentialsPolicies/scm` → `allow: false`), so publishing
+profiles do not authenticate; the deploy job signs in with a federated OIDC
+token instead and zip-deploys through ARM. The identity is an app registration
+(`sentinel-github-deploy`) with:
 
-`AZURE_API_PUBLISH_PROFILE` is the complete XML document, not the password alone.
+- a service principal granted **Contributor** on `sentinel-rg` only;
+- a federated credential named `github-main` with issuer
+  `https://token.actions.githubusercontent.com`, audience
+  `api://AzureADTokenExchange` and subject
+  `repo:rox-rohit/Sentinel:ref:refs/heads/main`.
+
+No client secret exists, so there is nothing to rotate; the federated subject
+is the authorization. A deploy from any other branch or repository is refused by
+Entra ID. To recreate the identity:
+
+```bash
+az ad app create --display-name sentinel-github-deploy
+az ad sp create --id <appId>
+az role assignment create --assignee <appId> --role Contributor \
+  --scope /subscriptions/<sub>/resourceGroups/sentinel-rg
+az ad app federated-credential create --id <appId> --parameters '{
+  "name": "github-main",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:rox-rohit/Sentinel:ref:refs/heads/main",
+  "audiences": ["api://AzureADTokenExchange"]}'
+```
+
+The Static Web Apps token is a deployment credential for the console only. Reset
+it with `az staticwebapp secrets reset-api-key` and update the secret in the same
+session, because the deploy job fails before deploying when it is missing.
 
 ### What the deploy job does
 
@@ -95,7 +121,8 @@ missing.
 3. Copies `deployment/staticwebapp.config.json` into `dist/client` (SPA fallback
    and response headers).
 4. Stages the API package — `sentinel/`, `requirements.txt`, `startup.sh`,
-   `artifacts/` and `data/processed/` — and zip-deploys `stage/`.
+   `artifacts/` and `data/processed/` — zips it and deploys it with
+   `az webapp deploy --type zip` under the OIDC identity.
 5. Uploads `dist/client` to Static Web Apps as a prebuilt app
    (`skip_app_build: true`).
 6. Runs the smoke checks below and fails the run on any mismatch.

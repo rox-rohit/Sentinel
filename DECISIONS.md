@@ -513,3 +513,42 @@ operator key in `localStorage` (session storage limits the exposure window).
 needs a shared counter or gateway policy. The console keeps the operator key in
 `sessionStorage` and sends it only as `X-API-Key`. Any future reversible secret
 (e.g. an SMTP password) needs a real KMS/secret store, not this database.
+
+## D-024 — Deploy the API with a federated OIDC identity, not a publish profile
+
+**Context.** D-019 shipped the `deploy` job with `azure/webapps-deploy@v3` and an
+`AZURE_API_PUBLISH_PROFILE` secret. The first real run failed in `Deploy API`:
+`Publish profile is invalid for app-name and slot-name provided`. The cause is
+not the profile document — the app has
+`basicPublishingCredentialsPolicies/scm` set to `allow: false`, so the profile's
+credentials are placeholders (8 characters) and every Kudu call returns 401.
+The publish-profile path cannot work on this app, and turning basic auth back on
+to satisfy it would reopen a password-based deployment surface.
+
+**Decision.** The deploy job requests an OIDC token (`permissions: id-token:
+write`), signs in with `azure/login@v2` using `AZURE_CLIENT_ID`,
+`AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`, and deploys with
+`az webapp deploy --type zip` over ARM. The identity is the
+`sentinel-github-deploy` app registration: a service principal with
+**Contributor** on `sentinel-rg` only, and a federated credential `github-main`
+whose subject is `repo:rox-rohit/Sentinel:ref:refs/heads/main` (issuer
+`https://token.actions.githubusercontent.com`, audience
+`api://AzureADTokenExchange`). No client secret exists. The console keeps the
+Static Web Apps deployment token, which is independent of the API app's
+publishing policy.
+
+**Alternatives rejected.** Re-enabling SCM basic auth to keep the publish
+profile (a long-lived password credential for a public app, and exactly the
+surface the hardening work in D-023 removed); a service-principal client secret
+in a repository secret (rotatable but still a bearer credential that never
+expires on its own); `azure/webapps-deploy` with the swap/ARM token (the action
+only speaks publish-profile and msdeploy); continuing to deploy manually through
+Kudu (no tested build, no smoke check, the state D-019 was written to end).
+
+**Consequences.** Deploy authorization is bound to a branch and repository; a
+push from anywhere else has no valid federated subject. Rotating nothing is
+required, but renaming the repository, changing the default branch or moving
+the resource group breaks the subject or the role scope and needs the federated
+credential updated. `az webapp deploy` restarts the app and waits for Oryx to
+rebuild `requirements.txt`, so the deploy step plus the `/health` retry is the
+longest part of the run.

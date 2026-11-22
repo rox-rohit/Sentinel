@@ -20,6 +20,7 @@ env:
   API_HOST: sentinel-api-l1fit9.azurewebsites.net
   API_BASE_URL: https://sentinel-api-l1fit9.azurewebsites.net/api/v1
   CONSOLE_HOST: victorious-sky-062450900.3.azurestaticapps.net
+  RESOURCE_GROUP: sentinel-rg
 
 jobs:
   verify:
@@ -104,23 +105,30 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
 
+    # The API app has SCM basic auth disabled, so a publish profile cannot
+    # authenticate against it. The job federates a short-lived OIDC token to a
+    # service principal instead, and no long-lived Azure credential is stored.
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check deployment secrets
+      - name: Check deployment configuration
         env:
-          PUBLISH_PROFILE: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
-          SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
         run: |
           status=0
-          if [ -z "$PUBLISH_PROFILE" ]; then
-            echo "::error::AZURE_API_PUBLISH_PROFILE is not set (see docs/DEPLOYMENT.md)"
-            status=1
-          fi
-          if [ -z "$SWA_TOKEN" ]; then
-            echo "::error::AZURE_STATIC_WEB_APPS_API_TOKEN is not set (see docs/DEPLOYMENT.md)"
-            status=1
-          fi
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_STATIC_WEB_APPS_API_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not set (see docs/DEPLOYMENT.md)"
+              status=1
+            fi
+          done
           exit "$status"
 
       - name: Set up Bun
@@ -136,6 +144,13 @@ jobs:
         with:
           name: sentinel-build
           path: .
+
+      - name: Sign in to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Build console against the hosted API
         env:
@@ -162,12 +177,18 @@ jobs:
           test -n "$(ls -A stage/artifacts/models)"
           du -sh stage
 
+      # ARM-authenticated zip deploy: it does not depend on the site's
+      # publishing credentials, which are disabled.
       - name: Deploy API
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.API_APP_NAME }}
-          publish-profile: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
-          package: ./stage
+        run: |
+          set -euo pipefail
+          (cd stage && zip -qr ../stage.zip .)
+          du -h stage.zip
+          az webapp deploy \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$API_APP_NAME" \
+            --src-path stage.zip \
+            --type zip
 
       - name: Deploy console
         uses: Azure/static-web-apps-deploy@v1
