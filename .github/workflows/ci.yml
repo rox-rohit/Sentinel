@@ -8,9 +8,18 @@ on:
 permissions:
   contents: read
 
+# Pull request runs are cheap and are cancelled freely. A push that is already
+# deploying must not be cancelled by the next push: a cancelled zip deploy can
+# leave the app on a half-synced wwwroot.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  API_APP_NAME: sentinel-api-l1fit9
+  API_HOST: sentinel-api-l1fit9.azurewebsites.net
+  API_BASE_URL: https://sentinel-api-l1fit9.azurewebsites.net/api/v1
+  CONSOLE_HOST: victorious-sky-062450900.3.azurestaticapps.net
 
 jobs:
   verify:
@@ -64,3 +73,155 @@ jobs:
 
       - name: Production build
         run: bun run build
+
+      # Model artifacts, processed data and the exported snapshot are
+      # git-ignored. Hand them to the deploy job so the deployed models are
+      # exactly the ones this job tested.
+      - name: Package deployment artifacts
+        # Same condition as the deploy job: a manual dispatch from main must
+        # produce the artifact its deploy consumes.
+        if: >-
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-build
+          retention-days: 1
+          path: |
+            artifacts/
+            data/processed/
+            src/generated/snapshot.json
+
+  deploy:
+    name: Deploy to Azure
+    needs: verify
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deployment secrets
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
+          SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        run: |
+          status=0
+          if [ -z "$PUBLISH_PROFILE" ]; then
+            echo "::error::AZURE_API_PUBLISH_PROFILE is not set (see docs/DEPLOYMENT.md)"
+            status=1
+          fi
+          if [ -z "$SWA_TOKEN" ]; then
+            echo "::error::AZURE_STATIC_WEB_APPS_API_TOKEN is not set (see docs/DEPLOYMENT.md)"
+            status=1
+          fi
+          exit "$status"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Download verified artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sentinel-build
+          path: .
+
+      - name: Build console against the hosted API
+        env:
+          VITE_API_BASE_URL: ${{ env.API_BASE_URL }}
+        run: bun run build
+
+      - name: Add Static Web Apps routing and headers
+        run: cp deployment/staticwebapp.config.json dist/client/
+
+      # Source only: the app's Oryx build installs requirements.txt into antenv
+      # with the runtime Python. A virtualenv built on this runner (3.12) would
+      # carry incompatible binary wheels for the app's 3.15 runtime.
+      - name: Stage the API package
+        run: |
+          rm -rf stage
+          mkdir -p stage/data
+          cp -R sentinel stage/sentinel
+          cp requirements.txt startup.sh stage/
+          cp -R artifacts stage/artifacts
+          cp -R data/processed stage/data/processed
+          find stage -type d -name __pycache__ -prune -exec rm -rf {} +
+          test -f stage/sentinel/api/main.py
+          test -f stage/artifacts/snapshot.json
+          test -n "$(ls -A stage/artifacts/models)"
+          du -sh stage
+
+      - name: Deploy API
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.API_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
+          package: ./stage
+
+      - name: Deploy console
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: dist/client
+          api_location: ""
+          output_location: ""
+          skip_app_build: true
+
+      - name: Smoke test the deployment
+        run: |
+          set -euo pipefail
+          api="https://${API_HOST}/api/v1"
+          console="https://${CONSOLE_HOST}"
+
+          retry() {
+            local attempts="$1" delay="$2"
+            shift 2
+            local attempt=1
+            until "$@"; do
+              if [ "$attempt" -ge "$attempts" ]; then
+                echo "::error::still failing after ${attempts} attempts: $*"
+                return 1
+              fi
+              attempt=$((attempt + 1))
+              sleep "$delay"
+            done
+          }
+
+          api_healthy() { curl -fsS --max-time 20 "$api/health" > /dev/null; }
+
+          echo "Waiting for $api/health (cold start can take a minute)…"
+          retry 36 10 api_healthy
+
+          for path in "fleet/summary" "alerts?limit=5" "models" "datasets"; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 25 "$api/$path")"
+            echo "GET /api/v1/$path -> $code"
+            test "$code" = "200"
+          done
+
+          preflight="$(curl -sS -D /tmp/preflight-headers -o /dev/null -w '%{http_code}' \
+            --max-time 20 -X OPTIONS "$api/fleet/summary" \
+            -H "Origin: $console" \
+            -H "Access-Control-Request-Method: GET" \
+            -H "Access-Control-Request-Headers: content-type")"
+          echo "CORS preflight from $console -> $preflight"
+          test "$preflight" = "200"
+          grep -qi "access-control-allow-origin: ${console}" /tmp/preflight-headers
+
+          curl -fsS --max-time 20 "$console/" | grep -q 'id="root"'
+          # SPA fallback: an unknown client route must still serve the shell.
+          curl -fsS --max-time 20 "$console/fleet" | grep -q 'id="root"'
+
+          echo "Deployment smoke checks passed."
