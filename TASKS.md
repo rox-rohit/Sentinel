@@ -1,6 +1,7 @@
 # SENTINEL — Task Board
 
-Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
+Updated: 2026-11-22 (Phase 0–9; replay streaming; alert lifecycle; Azure CI/CD;
+digital twin ingest; themed console; grounded assistant; API hardening)
 
 ## ✅ Completed and verified
 
@@ -154,17 +155,85 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
       call; warm `/alerts` dropped from ~5.6 s to ~0.75 s.
 - [x] Deployment procedure, hosts and environment variables recorded in
       `docs/DEPLOYMENT.md`.
+- [x] Continuous deployment: pushes to `main` deploy the API and console from
+      GitHub Actions only after the test/build job passes; the publish profile
+      and Static Web Apps token are repository secrets. The deploy job rebuilds
+      the console against the hosted API, ships the tested artifacts and
+      smoke-checks health, reads, CORS and the SPA fallback
+      (`docs/DEPLOYMENT.md`).
+
+### Phase 9 — Digital twin, security, assistant and themes
+- [x] Twin registry: `devices` (device id, bound fleet asset, mode, interval,
+      token prefix/digest/salt) and `device_samples` (seq, cycle, source,
+      health, anomaly index, severity, coverage, sensor JSON, timestamp).
+      Created automatically by `create_all`; no manual migration.
+- [x] Registration issues a one-time `sntl_…` token; only a PBKDF2-SHA256
+      digest and 16-byte salt are stored. Rotation invalidates the previous
+      token immediately.
+- [x] Manual ingest `POST /api/v1/devices/{id}/telemetry` requires
+      `X-Device-Token` (constant-time digest compare) or a valid `X-API-Key`;
+      anonymous and wrong-token samples return 401. 25 samples/second/device,
+      64 channels/sample, finite values only, 8 MB body cap.
+- [x] Baseline-relative twin scoring (pure, tested): median and 1.4826×MAD per
+      channel from the bound asset's healthy cycles; deviation index
+      `0.65·peak|z| + 0.35·median|z|`; health
+      `100 − min(50, 11·index) − 20·(1 − coverage)`; coverage/unknown/rejected
+      channels reported rather than folded into the score.
+- [x] Auto mode steps the bound asset's recorded trajectory through the same
+      ingest path on a background thread, at the device interval, with
+      start/stop and cursor progress. Auto is an ingest source, not a second
+      scoring path; nothing is generated.
+- [x] `GET /devices`, `GET /devices/{id}` (state, 180-sample history, trend,
+      baseline, model reference, auto status), `POST /devices`, `PATCH`,
+      `DELETE`, `POST /{id}/auto/start|stop`, `POST /{id}/rotate-token` and
+      `GET /devices/schema` (channels, contract, scoring formula).
+- [x] Machine Twin Studio (`/twins`): registry rail, schematic with eight
+      channel hotspots coloured by deviation, health ring, coverage/severity/
+      trend, health and deviation history, channel table, manual entry form,
+      auto controls, token reveal/rotate/copy, gateway request snippet, delete.
+- [x] Assistant dock (`Ask SENTINEL`): deterministic retrieval over the loaded
+      payload (fleet, per-asset, alerts, risk, RUL, maintenance, anomalies,
+      models, datasets, forecasting, explainability, settings, security, twin),
+      with citations, page links and a safe fallback. Works in live and
+      snapshot mode; no external model call and no invented numbers.
+- [x] Five themes (Sentinel, Obsidian, Daylight, Graphite, Aurora) driven by
+      semantic CSS variables; picker in the top bar and System Settings;
+      remembered in `localStorage` with an inline pre-paint script. All page
+      colours, charts and status tints now resolve from tokens.
+- [x] Removed the amber warning callouts: notes are quiet, neutral asides and
+      the “Simulated replay” chip is now a neutral “Recorded replay” status.
+- [x] API hardening: security headers (nosniff, frame denial, no-referrer,
+      permissions policy, HSTS on HTTPS, frame-locked CSP), per-client rate
+      limit with 429 + Retry-After, 8 MB body cap, constant-time API-key
+      comparison, optional `SENTINEL_REQUIRE_API_KEY` fail-closed mode, and CORS
+      verbs extended to PUT/PATCH/DELETE for the console.
+- [x] Optimisation: route-level lazy loading (15 page chunks), snapshot JSON
+      split into its own cached chunk, chart series thinning above 480 points,
+      unique SVG gradient ids per chart instance. Entry bundle measured at
+      816.5 kB → 256 kB.
+- [x] Docs: `docs/SECURITY.md`, API twin contract, deployment settings,
+      design-system themes.
 
 ### Verification
-- [x] `python -m pytest -q` — 74 passed (data, validation, features, metrics,
+- [x] `python -m pytest -q` — 84 passed (data, validation, features, metrics,
       decisions, API integration, RUL sequence inference, replay cursor and
       WebSocket protocol, strict-JSON frame safety, chronological forecasting,
       alert identity/persistence/transitions, scenario persistence/comparison,
       onboarding mapping/validation/registry/scoring gate, profile CRUD and
       schema-drift detection/acknowledgement).
-- [x] `bun run typecheck` — clean.
-- [x] `bun run build` — Vite + Worker build, dist/sentinel/index.js produced.
-- [x] `bun test tests` — worker health/404 behaviour.
+- [x] `node node_modules/typescript/bin/tsc --noEmit` — clean (bun is not on
+      this shell's PATH; the CI job runs the documented bun commands).
+- [x] `node node_modules/vite/bin/vite.js build && node scripts/postbuild.mjs` —
+      Vite + Worker build, dist/sentinel/index.js produced; entry chunk 256 kB
+      with per-route, snapshot and chart chunks.
+- [x] Worker tests run in CI (`bun test tests`); not executed locally in this
+      session because bun is unavailable here.
+- [x] Live runtime smoke on 2026-11-22: device create → token ingest (health
+      100, healthy) → anonymous 401 → auto start (156 cycles) → 2 samples in
+      1.5 s → stop → delete; security headers present on `/health`.
+- [x] Theme check in the running console: Sentinel `rgb(7,9,12)`, Daylight
+      `rgb(246,247,249)` with ink text, Obsidian `rgb(0,0,0)`, Aurora
+      `rgb(8,6,20)` — all resolve and restore.
 
 ## 🟡 In progress / partial
 - [ ] Model registry promotion workflow in the UI (metadata + status exist).
@@ -194,4 +263,10 @@ Updated: 2026-11-17 (Phase 0–7; Phase 6 replay streaming; alert lifecycle)
 - IMS Bearing dataset not integrated (not downloaded; needs signal-processing path).
 - Snapshot fallback is static: no live inference when the API is unreachable.
   Live Monitoring degrades to an artifact replay without RUL bands/severity.
-- Replay is recorded C-MAPSS data; there is no MQTT/OPC-UA/PLC ingestion.
+- Replay is recorded C-MAPSS data. Twin ingest is a real HTTP contract, but
+  auto mode drives it from the recorded trajectory; a field OPC-UA/MQTT bridge
+  is still pending.
+- Twin auto feed runs in the single uvicorn process (thread per twin). Scaling
+  to multiple instances needs a worker/queue or a single-leader deployment.
+- The assistant is deterministic retrieval over the loaded payload, not a
+  generative model; it will not answer outside the platform's data domains.

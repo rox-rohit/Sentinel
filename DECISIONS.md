@@ -363,3 +363,153 @@ allows 12 s. The schema is initialized once at startup rather than per request.
 Deleting `output.tar.zst` while `oryx-manifest.toml` still says the output is
 compressed breaks every restart; the manifest must be removed after manual
 extraction. Hosts and settings are recorded in `docs/DEPLOYMENT.md`.
+
+## D-019 — Deploy from GitHub Actions, gated on the test job
+
+**Context.** Every update after the first deployment was manual: build locally,
+upload through Kudu VFS, re-apply the executable bit, extract the Oryx archive
+and remove `oryx-manifest.toml`. That procedure is undocumented muscle memory,
+it has already produced a startup panic once, and nothing proved the deployed
+build was the tested one.
+
+**Decision.** `.github/workflows/ci.yml` keeps `verify` (pipeline build, pytest,
+worker tests, typecheck, console build) as the gate and adds a `deploy` job with
+`needs: verify`, restricted to `main` pushes and manual dispatch from `main`. It
+uses the app's publishing profile and the Static Web Apps deployment token from
+repository secrets, deploys the API before the console, and fails the run unless
+the smoke checks pass (health, four reads, CORS preflight, SPA fallback). The
+`verify` job uploads `artifacts/`, `data/processed/` and the exported snapshot so
+the deploy ships exactly the build the tests ran against. The API package is
+source only: Oryx builds `requirements.txt` on the app, because a virtualenv
+built on the runner would carry Python 3.12 wheels for a 3.15 runtime.
+
+**Alternatives rejected.** A manual deploy remaining the normal path
+(unreproducible, unverified); OpenID Connect with a federated service principal
+(the better long-term credential, but it needs an app registration and role
+assignment the repository owner has not created — the publish profile is what
+the app already issues); committing a prebuilt virtualenv or `site-packages`
+(ABI mismatch, and binary artifacts are excluded by policy); a separate
+`workflow_run` deploy workflow (a second workflow can deploy the stale commit
+when two pushes land close together); allowing `cancel-in-progress` on pushes
+(a cancelled zip deploy can leave `wwwroot` half-synced).
+
+**Consequences.** A merge to `main` deploys automatically after about 10–15
+minutes of tests and pipeline build. A failed smoke check fails the workflow but
+does not roll back: recovery is re-running the workflow on the last good commit
+or the manual Kudu procedure. Rotating the publishing profile or the SWA token
+requires updating the secret, or the deploy job stops at its first step. The
+deployment path itself is only exercised by a real run, so the first
+`workflow_dispatch` from `main` is the acceptance test, and the manual procedure
+stays documented as the fallback.
+
+## D-020 — Digital-twin ingest with manual and auto sources
+
+**Context.** The console could only replay recorded C-MAPSS trajectories. The
+product needs a twin of a real machine: register it, push readings by hand or
+from a gateway, and see health and performance update for that specific machine.
+There is no MQTT broker, PLC or historian in the current deployment.
+
+**Decision.** Add a `devices` registry and `device_samples` history, with a
+token-authenticated HTTP ingest endpoint (`X-Device-Token`, one-time display,
+PBKDF2 digest at rest, rotation). Score samples with a pure baseline-relative
+function: the bound asset's healthy cycles give a median and 1.4826×MAD per
+channel; `deviation = 0.65·peak|z| + 0.35·median|z|`; `health = 100 − min(50,
+11·deviation) − 20·(1 − coverage)`. Auto mode is a second *source*: a background
+thread steps the bound asset's recorded trajectory through the same ingest path
+at the device interval. Nothing is generated, and both modes share one scorer.
+
+**Alternatives rejected.** An MQTT broker (new infrastructure with no broker in
+App Service, and no hardware to test against); driving auto mode from the
+browser (dies with the tab and would put replay pacing in the client); reusing
+the C-MAPSS RUL model on arbitrary samples (its feature contract is 30 cycles ×
+21 channels — it cannot score an 8-channel sample honestly); a single global
+twin instead of per-device twins (loses machine identity and history); storing
+tokens in plaintext (a database dump would become an ingest credential).
+
+**Consequences.** A physical gateway can post JSON today; a field OPC-UA/MQTT
+bridge still has to be written. The auto feeder is in-process, so the API must
+stay single-worker (it is) or move the feeder to a queue when scaled out. Twin
+health is deviation-based and documented as such; it is not a physics model and
+does not produce a new RUL. See `docs/SECURITY.md` for the ingest controls.
+
+## D-021 — Themes as semantic CSS variables, not per-theme components
+
+**Context.** The console was dark-only with hex values scattered through chart
+props and Tailwind arbitrary classes. The request is at least four themes,
+including a white and a black one, with no visual drift between pages.
+
+**Decision.** Define every colour as a semantic custom property (`--bg`,
+`--surface`, `--accent`, `--good-soft`, `--chart-1`, …), set per palette on
+`:root[data-theme=…]`, and expose them to Tailwind through
+`@theme inline { --color-bg: var(--bg); … }`. React reads the selection from a
+small `ThemeProvider`, persists it, and an inline script in `index.html` applies
+it before first paint. Charts accept CSS variable strings, so SVG series follow
+the palette. Five themes ship: Sentinel (cyan/midnight), Obsidian (true black,
+monochrome), Daylight (paper white, ink blue), Graphite (warm stone, teal) and
+Aurora (indigo, violet).
+
+**Alternatives rejected.** Duplicating class names per theme (`dark:` variants
+explode the markup and still miss chart props); one stylesheet per theme
+(duplicate payload, flash of the wrong palette); CSS `light-dark()` alone
+(cannot express five palettes or the status tints); a theme editor at runtime
+(the product needs a curated set, not user-authored CSS).
+
+**Consequences.** New UI must use tokens; a hardcoded hex is now a review defect.
+Some status tints need explicit `--good-soft`-style variables because Tailwind
+arbitrary opacity syntax cannot take a runtime variable cleanly. The inline
+script duplicates the theme id list, so adding a sixth theme touches both
+`theme.tsx` and `index.html`.
+
+## D-022 — The assistant retrieves from the loaded payload, with no LLM
+
+**Context.** The console needs a place to type questions and get answers from
+the platform's own data. There is no model API key, the console must work from
+the static snapshot when the API is down, and the project rule forbids inventing
+numbers that are not in build artifacts.
+
+**Decision.** Implement `askAssistant(question, snapshot)` as a deterministic
+intent router in TypeScript over the exact payload the pages already render. It
+matches asset ids/labels first, then scores keyword sets for fleet, alerts, risk,
+RUL, maintenance, anomalies, models, datasets, forecasting, explainability,
+settings, security and twin topics, and composes an answer with bullets, page
+links and a source line. Unknown questions fall back to capabilities plus the
+lowest-health asset.
+
+**Alternatives rejected.** A hosted LLM (needs a key and a budget, adds latency,
+and would paraphrase or invent numbers, breaking the artifact-only rule); a
+backend `/assistant` endpoint (duplicates the engine, and the snapshot-mode
+console would lose the feature); embeddings/vector search (the payload is a
+single JSON document already in memory — retrieval is a lookup, not a search
+problem).
+
+**Consequences.** Vocabulary is bounded; new domains need new intents. An LLM can
+later be added as a phrasing layer over the retrieved facts, never as the source
+of them. Answers are instant, private and testable.
+
+## D-023 — Security posture: hashed device tokens, no app-level field crypto
+
+**Context.** The platform is publicly reachable, mutating routes were open by
+default, and the new device ingest accepts data from machines. "Encryption" must
+mean something real rather than a decorative claim.
+
+**Decision.** Keep the API key optional for local demos but compare it in
+constant time and allow `SENTINEL_REQUIRE_API_KEY=true` to fail closed. Device
+tokens are one-way (PBKDF2-SHA256, 120k iterations, per-device salt) and shown
+once; nothing reversible is stored, so there is no plaintext device secret to
+encrypt. Add security headers, an 8 MB body cap, a per-client rate limit and a
+25 samples/second/device ingest throttle. Extend CORS to the verbs the console
+actually uses. In transit, TLS is terminated by App Service and HSTS is emitted
+on HTTPS; at rest, PostgreSQL Flexible Server encrypts storage with
+service-managed AES-256 keys.
+
+**Alternatives rejected.** Adding the `cryptography` package for app-level
+Fernet encryption (a new compiled dependency that is not installed, would need a
+key-management story, and buys nothing when the stored credential is one-way);
+OIDC/OAuth (no identity provider exists and the console is single-operator);
+Redis-backed rate limiting (new infrastructure for a single worker); storing the
+operator key in `localStorage` (session storage limits the exposure window).
+
+**Consequences.** The rate limiter is per process; a multi-instance deployment
+needs a shared counter or gateway policy. The console keeps the operator key in
+`sessionStorage` and sends it only as `X-API-Key`. Any future reversible secret
+(e.g. an SMTP password) needs a real KMS/secret store, not this database.

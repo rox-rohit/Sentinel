@@ -8,7 +8,7 @@ validated data, predictions, explanations and budget-constrained maintenance
 decisions. It is built as a real system — a Python data/ML backend, a FastAPI
 service and a React operations console — on two public research datasets.
 
-![status](https://img.shields.io/badge/tests-74%20passing-2dd4a7)
+![status](https://img.shields.io/badge/tests-84%20passing-2dd4a7)
 ![python](https://img.shields.io/badge/python-3.11%2B-35d6f2)
 ![node](https://img.shields.io/badge/node-20%2B-35d6f2)
 
@@ -29,7 +29,9 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 | Why? | Explainable AI | Permutation importance, occlusion attributions, reliability curve |
 | What next? | Maintenance optimiser | Priority ranking + knapsack under budget, scenario costing |
 | What will the sensor do? | Sensor forecasting | Statistical baselines and gradient boosting, chronological validation |
-| Is it streaming? | Live monitoring | Recorded C-MAPSS replay over WebSocket, labelled simulated |
+| Is it streaming? | Live monitoring | Recorded C-MAPSS replay over WebSocket, labelled recorded |
+| Can I connect a real machine? | Machine twin | Token-authenticated ingest, manual entry or auto feed, baseline-relative health |
+| Can I just ask? | Assistant | Typed questions answered from the loaded payload, with citations and links |
 | How does our data get in? | Plant onboarding | CSV → mapping profile → validation + drift gate → per-asset baseline + health |
 
 ## Screenshots

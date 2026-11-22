@@ -120,9 +120,31 @@ API contract; the UI labels live vs artifact-snapshot mode in the top bar.
 - ✅ Public Azure deployment: FastAPI + PostgreSQL on App Service, React console
   on Static Web Apps, live API and snapshot fallback verified
   (`docs/DEPLOYMENT.md`).
+- ✅ Push-to-main CI/CD: the existing test/build job gates a deploy job that
+  ships the API zip and the prebuilt console, then smoke-checks health, reads,
+  CORS and the SPA fallback.
 - ⬜ Architecture diagram asset, recorded demo video, setup walkthrough GIF.
+
+## Phase 9 — Digital twin & product hardening ✅
+
+- ✅ Device registry with one-time, PBKDF2-hashed ingest tokens, rotation and a
+  per-device sample history (`devices`, `device_samples`).
+- ✅ Manual ingest and auto mode over the bound asset's recorded trajectory,
+  both scored by one baseline-relative twin function (peak-weighted deviation
+  with a coverage penalty).
+- ✅ Machine Twin Studio: schematic hotspots, health/anomaly/coverage, channel
+  table, manual form, auto controls, token and gateway instructions.
+- ✅ Grounded assistant dock answering from the loaded payload with citations,
+  available in live and snapshot mode without an external model.
+- ✅ Five-palette theming on semantic CSS variables (dark, true black, two light
+  themes and indigo), with a pre-paint theme script and tokenised charts.
+- ✅ Security hardening: headers, rate limiting, body cap, constant-time API key,
+  fail-closed option, device tokens, CORS verbs.
+- ✅ Frontend optimisation: route-level splitting, snapshot chunking, chart
+  thinning; entry bundle 816.5 kB → 256 kB.
 
 ## Next recommended task
 
-Phase 6's MLflow tracking and retraining/promotion workflow.
+A field connector for the twin (OPC-UA/MQTT → the existing telemetry contract),
+then Phase 6's MLflow tracking and retraining/promotion workflow.
 See `TASKS.md` for the granular list.

@@ -18,8 +18,9 @@ All errors use one envelope:
 | 400 | Invalid request semantics (e.g. sequence too short) |
 | 401 | API key required but missing/invalid |
 | 404 | Unknown asset, dataset or model |
-| 413 | Upload larger than 5 MB |
-| 422 | Pydantic validation failure |
+| 413 | Upload larger than 5 MB (onboarding) or 8 MB (global body cap) |
+| 422 | Pydantic validation failure, or auto mode without a bound asset |
+| 429 | Rate limit exceeded, or more than 25 samples/second for one device |
 | 503 | Build artifacts missing — run the pipeline |
 
 ## System
@@ -136,6 +137,61 @@ Requires `op1..op3` optionally and all `s1..s21` channels; at least 30 cycles so
 the 30-cycle rolling window is complete. Response includes the estimate, the
 empirical interval and horizon risks.
 
+## Digital twins
+
+A twin binds a registered machine to a fleet asset. The asset's healthy cycles
+define a per-channel median and robust scale; every ingested sample is scored
+against it. See `docs/SECURITY.md` for the credential model.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/devices/schema` | Channel catalogue, ingest contract, scoring formula, limits |
+| POST | `/devices` | Register a machine; returns the one-time `token` (mutating) |
+| GET | `/devices` | Registered twins with latest state, trend and auto status |
+| GET | `/devices/{device_id}` | Twin snapshot: state, history, baseline, model reference |
+| PATCH | `/devices/{device_id}` | Rename, re-bind, change mode or interval (mutating) |
+| DELETE | `/devices/{device_id}` | Remove the twin and its samples (mutating) |
+| POST | `/devices/{device_id}/telemetry` | Ingest one sample (`X-Device-Token`) |
+| POST | `/devices/{device_id}/auto/start` | Stream the bound asset's recorded cycles (mutating) |
+| POST | `/devices/{device_id}/auto/stop` | Stop the auto feed (mutating) |
+| POST | `/devices/{device_id}/rotate-token` | Issue a new ingest token (mutating) |
+
+A gateway sends:
+
+```http
+POST /api/v1/devices/dev_1a2b3c4d5e6f/telemetry
+Content-Type: application/json
+X-Device-Token: sntl_…
+
+{"sensors": {"s2": 642.1, "s3": 1589.4, "s7": 554.3}, "cycle": 42}
+```
+
+Response (trimmed):
+
+```json
+{"accepted": true, "sample": {"seq": 7, "health": 96.4},
+ "twin": {"usable": true, "health_score": 96.4, "category": "healthy",
+          "anomaly_score": 0.31, "severity": "normal",
+          "coverage": {"expected": 8, "matched": 3, "coverage": 0.375,
+                       "missing": ["s4", "s8"], "unknown": [], "rejected": []},
+          "sensors": [{"sensor": "s2", "value": 642.1, "median": 640.7,
+                       "z_score": 0.05, "deviation_pct": 0.22}],
+          "explanation": "3 of 8 channels matched the baseline; …"}}
+```
+
+Scoring (deterministic, no model call):
+
+```
+deviation_index = 0.65 × max|z| + 0.35 × median|z|
+health          = 100 − min(50, 11 × deviation_index) − 20 × (1 − coverage)
+```
+
+`coverage` is `matched / expected`; unknown channels are listed and excluded.
+Auto mode is an ingest source: it steps the bound asset's recorded C-MAPSS
+trajectory through the same endpoint logic at `interval_ms` (250–60000) and
+stops at the end of the recording. It requires an artifact build and returns 422
+without a bound asset.
+
 ## Decision
 
 | Method | Path | Description |
@@ -199,9 +255,21 @@ dataset by running the build pipeline.
 
 ## Authentication
 
-Authentication is an optional dependency: set `SENTINEL_API_KEY` and mutating
-routes require `X-API-Key`. Reads stay open for local dashboards. CORS is
-restricted to the configured UI origins. No secret is ever returned by the API.
+Two credentials exist:
+
+* **Operator key** — set `SENTINEL_API_KEY`; mutating routes then require
+  `X-API-Key` (compared in constant time). Reads stay open for dashboards.
+  `SENTINEL_REQUIRE_API_KEY=true` fails closed when no key is configured.
+* **Device token** — issued once by `POST /devices`, stored only as a PBKDF2
+  digest. Required as `X-Device-Token` on telemetry ingest; a valid operator key
+  is also accepted. Anonymous ingest returns 401.
+
+Every response carries security headers (nosniff, frame denial, no-referrer,
+permissions policy, frame-locked CSP; HSTS on HTTPS). API routes are rate
+limited per client (`SENTINEL_RATE_LIMIT_PER_MINUTE`, default 300) and request
+bodies above 8 MB are rejected before routing. CORS is restricted to the
+configured console origins and to GET/POST/PUT/PATCH/DELETE/OPTIONS. No secret
+is ever returned by the API except the one-time device token.
 
 ## Design notes
 

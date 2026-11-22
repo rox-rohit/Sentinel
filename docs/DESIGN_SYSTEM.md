@@ -13,7 +13,11 @@
 
 ## Tokens (`src/styles.css`)
 
-| Token | Value | Use |
+Colour is semantic and themed. Components never contain a hex value: the
+`@theme inline` block maps each `--color-*` utility to a palette variable, and
+`:root[data-theme=…]` supplies the values. Default (Sentinel) values:
+
+| Token | Sentinel | Use |
 |---|---|---|
 | `--color-bg` | `#07090c` | App background |
 | `--color-bg-deep` | `#05070a` | Sidebar |
@@ -31,6 +35,34 @@
 | `--color-warn` | `#f5a524` | Warning / attention |
 | `--color-bad` | `#f4495d` | High risk |
 | `--color-critical` | `#ff4d6d` | Critical |
+
+The same palettes define supporting tokens: `--overlay-1/2/3` (subtle fills),
+`--track` / `--track-strong` (progress rails), `--accent-soft` / `--accent-line`
+(chips and emphasis), `--good-soft` / `--good-line`, `--warn-soft` /
+`--warn-line`, `--bad-soft` / `--bad-line`, `--critical-soft` /
+`--critical-line`, `--chart-1…5`, `--panel-top` / `--panel-bottom`,
+`--header-bg`, `--tooltip-bg` / `--tooltip-fg`, `--grid-line`, `--axis`,
+`--glow-1` / `--glow-2` and `--selection`.
+
+## Themes
+
+`ThemeProvider` (`src/lib/theme.tsx`) writes `data-theme` on `<html>`, sets
+`color-scheme`, persists the choice in `localStorage` and updates the
+`theme-color` meta tag. An inline script in `index.html` applies the saved theme
+before first paint. Charts take `var(--chart-n)` strings so SVG series follow the
+palette.
+
+| Id | Name | Scheme | Intent |
+|---|---|---|---|
+| `sentinel` | Sentinel | dark | Midnight command centre, cyan telemetry (default) |
+| `obsidian` | Obsidian | dark | True black, monochrome steel, no glow |
+| `daylight` | Daylight | light | Paper white surfaces, ink-blue accents |
+| `graphite` | Graphite | light | Warm stone neutrals, deep teal |
+| `aurora` | Aurora | dark | Indigo night, violet and cyan gradients |
+
+The picker lives in the top bar and in System Settings. New UI must use tokens;
+a raw hex or `rgb()` in a component is a defect. Amber is reserved for
+risk/attention semantics — never for banner styling or decoration.
 
 Typography: Google Sans (interface), IBM Plex Mono (all telemetry numerals).
 Base text 11–13 px, page title 19 px, KPI values 26 px — enterprise density,
