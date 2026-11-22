@@ -196,8 +196,14 @@ jobs:
       # publishing credentials, which are disabled. It is asynchronous because
       # the synchronous call waits for the Oryx build behind Kudu's gateway and
       # gets a 504 after roughly four minutes, even though the build completes.
-      # --clean removes the previous tree: a stale `sentinel/` left in wwwroot
-      # would otherwise be imported in place of the new build.
+      #
+      # No --clean: the flag is accepted but not applied to a build deployment.
+      # Every deployment record for this app reports
+      # `PreDeployment: context.CleanOutputPath False`, including the runs that
+      # passed --clean true, and a previous tree stayed in wwwroot across a
+      # successful deploy. What keeps the app on the new build is the relative
+      # startup command plus startup.sh resolving its root from Oryx's
+      # PYTHONPATH, so the stale tree in wwwroot is never imported.
       - name: Deploy API
         run: |
           set -euo pipefail
@@ -209,7 +215,6 @@ jobs:
             --name "$API_APP_NAME" \
             --src-path stage.zip \
             --type zip \
-            --clean true \
             --async true
 
       - name: Wait for the API deployment

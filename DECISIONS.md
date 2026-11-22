@@ -553,10 +553,13 @@ Kudu (no tested build, no smoke check, the state D-019 was written to end).
 compressed (`output.tar.zst` + `oryx-manifest.toml` in `wwwroot`) and the
 container runs from a `/tmp` extraction; the app's startup command must
 therefore be the relative `bash startup.sh` (an absolute `wwwroot` path runs the
-previous deployment's script), `startup.sh` resolves its root from Oryx's
-`PYTHONPATH`, and the job deploys with `--clean true` and `--async true` followed
-by a wait on the new deployment record, since the synchronous call is cut off by
-Kudu's gateway at about four minutes. Deploy authorization is bound to a branch and repository; a
+previous deployment's script), and `startup.sh` resolves its root from Oryx's
+`PYTHONPATH`. `--clean` is not passed: it is accepted but not applied to a build
+deployment — every deployment record for this app reports
+`PreDeployment: context.CleanOutputPath False`, including runs that passed
+`--clean true`, and a stale tree survived a successful deploy. The job deploys
+with `--async true` and waits on the new deployment record, since the
+synchronous call is cut off by Kudu's gateway at about four minutes. Deploy authorization is bound to a branch and repository; a
 push from anywhere else has no valid federated subject. Rotating nothing is
 required, but changing the default branch or moving the resource group breaks
 the subject or the role scope and needs the federated credential updated; the

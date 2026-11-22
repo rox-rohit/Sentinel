@@ -239,8 +239,10 @@ digital twin ingest; themed console; grounded assistant; API hardening)
 - [x] `deploy` job on `main` signs in with the federated OIDC identity
       (`sentinel-github-deploy`: Contributor on `sentinel-rg` only, credential
       `github-main` with the immutable-id subject), deploys the API with
-      `az webapp deploy --type zip --clean true --async true`, waits for the new
-      deployment record, then uploads the console and runs the smoke checks.
+      `az webapp deploy --type zip --async true`, waits for the new deployment
+      record, then uploads the console and runs the smoke checks. `--clean` is
+      not used: every deployment record reports
+      `CleanOutputPath False` even when it was passed, so it cannot be relied on.
 - [x] Deployment verified 2026-11-22 on run `45018463261` (commit `85f8919`):
       `verify` and `deploy` both succeeded. API at
       `https://sentinel-api-l1fit9.azurewebsites.net` answers `/api/v1/health`,

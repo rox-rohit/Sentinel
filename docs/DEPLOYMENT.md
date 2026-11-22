@@ -153,11 +153,17 @@ runs from an extraction under `/tmp`. Two consequences:
   setting on every run (`az webapp config set --startup-file 'bash startup.sh'`),
   and `startup.sh` itself resolves the run root from Oryx's exported
   `PYTHONPATH` as a second guard.
-- the deploy step passes `--clean true`, so the old tree is removed rather than
-  imported; and it deploys with `--async true` and then waits for a new
-  successful deployment record, because the synchronous call is cut off by
-  Kudu's gateway with HTTP 504 after about four minutes even when the build
-  succeeds.
+- the deploy step does **not** pass `--clean`, because the flag has no effect
+  here. Every deployment record for this app reports
+  `PreDeployment: context.CleanOutputPath False`, including the runs that passed
+  `--clean true`, and a stale `sentinel/` tree survived a successful deploy.
+  A build deployment merges into `wwwroot` instead of replacing it, so nothing
+  may depend on cleaning: `wwwroot` keeps files from earlier deployments, and
+  the relative startup command plus the `PYTHONPATH` root resolution above are
+  what keep the running app on the new build.
+- it deploys with `--async true` and then waits for a new successful deployment
+  record, because the synchronous call is cut off by Kudu's gateway with HTTP
+  504 after about four minutes even when the build succeeds.
 
 ### Smoke checks
 
