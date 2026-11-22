@@ -142,10 +142,26 @@ binary wheels (numpy, pandas, pyarrow, psycopg) would not load. If the App
 Service Python runtime version ever changes, `startup.sh` (`SITE_PACKAGES`) must
 change with it.
 
+Because the build happens on the app, Kudu keeps the result compressed:
+`output.tar.zst` and `oryx-manifest.toml` stay in `wwwroot` and the container
+runs from an extraction under `/tmp`. Two consequences:
+
+- `startup.sh` starts from the working directory that actually contains
+  `sentinel/` (the `/tmp` extraction), falling back to `wwwroot` only for a
+  decompressed tree. `cd /home/site/wwwroot` unconditionally served the previous
+  deployment's package once a stale tree was left there.
+- the deploy step passes `--clean true`, so the old tree is removed rather than
+  imported; and it deploys with `--async true` and then waits for a new
+  successful deployment record, because the synchronous call is cut off by
+  Kudu's gateway with HTTP 504 after about four minutes even when the build
+  succeeds.
+
 ### Smoke checks
 
 - `GET /api/v1/health` returns 200, polled for up to 6 minutes (cold start).
 - `GET /api/v1/{fleet/summary, alerts?limit=5, models, datasets}` return 200.
+- `GET /api/v1/devices/schema` returns 200 — it exists only in the current
+  build, so a stale deployment that still answers the older routes fails here.
 - CORS preflight from the console origin returns 200 with the matching
   `Access-Control-Allow-Origin`.
 - The console serves `/` and an unknown route (`/fleet`) with the SPA shell.

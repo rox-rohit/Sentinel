@@ -549,7 +549,13 @@ expires on its own); `azure/webapps-deploy` with the swap/ARM token (the action
 only speaks publish-profile and msdeploy); continuing to deploy manually through
 Kudu (no tested build, no smoke check, the state D-019 was written to end).
 
-**Consequences.** Deploy authorization is bound to a branch and repository; a
+**Consequences.** The build stays on the app, so Kudu keeps the result
+compressed (`output.tar.zst` + `oryx-manifest.toml` in `wwwroot`) and the
+container runs from a `/tmp` extraction; `startup.sh` therefore starts from the
+directory that holds `sentinel/` instead of hard-coding `wwwroot`, and the job
+deploys with `--clean true` and `--async true` followed by a wait on the new
+deployment record, since the synchronous call is cut off by Kudu's gateway at
+about four minutes. Deploy authorization is bound to a branch and repository; a
 push from anywhere else has no valid federated subject. Rotating nothing is
 required, but changing the default branch or moving the resource group breaks
 the subject or the role scope and needs the federated credential updated; the

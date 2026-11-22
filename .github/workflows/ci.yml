@@ -178,17 +178,40 @@ jobs:
           du -sh stage
 
       # ARM-authenticated zip deploy: it does not depend on the site's
-      # publishing credentials, which are disabled.
+      # publishing credentials, which are disabled. It is asynchronous because
+      # the synchronous call waits for the Oryx build behind Kudu's gateway and
+      # gets a 504 after roughly four minutes, even though the build completes.
+      # --clean removes the previous tree: a stale `sentinel/` left in wwwroot
+      # would otherwise be imported in place of the new build.
       - name: Deploy API
         run: |
           set -euo pipefail
           (cd stage && zip -qr ../stage.zip .)
           du -h stage.zip
+          echo "DEPLOY_STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
           az webapp deploy \
             --resource-group "$RESOURCE_GROUP" \
             --name "$API_APP_NAME" \
             --src-path stage.zip \
-            --type zip
+            --type zip \
+            --clean true \
+            --async true
+
+      - name: Wait for the API deployment
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            latest="$(az webapp log deployment list -g "$RESOURCE_GROUP" -n "$API_APP_NAME" \
+              --query "[?status==\`4\`].end_time | sort(@) | [-1]" -o tsv 2>/dev/null || true)"
+            if [ -n "$latest" ] && [ "${latest:0:16}" \> "${DEPLOY_STARTED:0:16}" ]; then
+              echo "Oryx build and deployment finished at $latest"
+              exit 0
+            fi
+            echo "attempt $attempt: newest successful deployment is ${latest:-none}"
+            sleep 15
+          done
+          echo "::error::the API deployment did not finish within 15 minutes"
+          exit 1
 
       - name: Deploy console
         uses: Azure/static-web-apps-deploy@v1
@@ -226,7 +249,9 @@ jobs:
           echo "Waiting for $api/health (cold start can take a minute)…"
           retry 36 10 api_healthy
 
-          for path in "fleet/summary" "alerts?limit=5" "models" "datasets"; do
+          # devices/schema exists only in the current build, so a stale
+          # deployment that still answers the older routes fails here.
+          for path in "fleet/summary" "alerts?limit=5" "models" "datasets" "devices/schema"; do
             code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 25 "$api/$path")"
             echo "GET /api/v1/$path -> $code"
             test "$code" = "200"
