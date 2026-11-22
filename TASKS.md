@@ -235,6 +235,22 @@ digital twin ingest; themed console; grounded assistant; API hardening)
       `rgb(246,247,249)` with ink text, Obsidian `rgb(0,0,0)`, Aurora
       `rgb(8,6,20)` — all resolve and restore.
 
+### Phase 10 — Hosted deployment
+- [x] `deploy` job on `main` signs in with the federated OIDC identity
+      (`sentinel-github-deploy`: Contributor on `sentinel-rg` only, credential
+      `github-main` with the immutable-id subject), deploys the API with
+      `az webapp deploy --type zip --clean true --async true`, waits for the new
+      deployment record, then uploads the console and runs the smoke checks.
+- [x] Deployment verified 2026-11-22 on run `45018463261` (commit `85f8919`):
+      `verify` and `deploy` both succeeded. API at
+      `https://sentinel-api-l1fit9.azurewebsites.net` answers `/api/v1/health`,
+      `/api/v1/fleet/summary` and `/api/v1/devices/schema` with 200; the console
+      is served from `https://victorious-sky-062450900.3.azurestaticapps.net`.
+- [x] Startup command is the relative `bash startup.sh`; Oryx runs it from the
+      extracted build under `/tmp`, and `startup.sh` also resolves its root from
+      Oryx's exported `PYTHONPATH`. Both are required: the absolute `wwwroot`
+      form executed the previous deployment's script and served pre-twin code.
+
 ## 🟡 In progress / partial
 - [ ] Model registry promotion workflow in the UI (metadata + status exist).
 - [ ] Drift report surfaced on the Model Lab page (API exists).
