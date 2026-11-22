@@ -143,6 +143,46 @@ class MaintenanceScenarioRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class DeviceRecord(Base):
+    """A registered machine whose telemetry feeds a digital twin.
+
+    Only a PBKDF2 digest of the device token is stored (see `store/devices.py`),
+    so the database cannot be replayed against the ingest endpoint.
+    """
+
+    __tablename__ = "devices"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    device_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    asset_id: Mapped[str] = mapped_column(String(48), nullable=True, index=True)
+    mode: Mapped[str] = mapped_column(String(12), default="manual")
+    interval_ms: Mapped[int] = mapped_column(Integer, default=1500)
+    token_prefix: Mapped[str] = mapped_column(String(16), default="")
+    token_hash: Mapped[str] = mapped_column(String(128), default="")
+    token_salt: Mapped[str] = mapped_column(String(64), default="")
+    notes: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DeviceSampleRecord(Base):
+    """One ingested telemetry sample and its twin assessment."""
+
+    __tablename__ = "device_samples"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    device_id: Mapped[str] = mapped_column(String(32), index=True)
+    seq: Mapped[int] = mapped_column(Integer, default=0)
+    cycle: Mapped[int] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(String(12), default="manual")
+    health: Mapped[float] = mapped_column(Float, nullable=True)
+    anomaly: Mapped[float] = mapped_column(Float, nullable=True)
+    severity: Mapped[str] = mapped_column(String(16), nullable=True)
+    coverage: Mapped[float] = mapped_column(Float, nullable=True)
+    sensors_json: Mapped[str] = mapped_column(Text, default="{}")
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+
+
 engine = create_engine(
     settings.database_url,
     future=True,
